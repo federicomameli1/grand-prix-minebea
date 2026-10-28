@@ -65,12 +65,29 @@ const table = (list, hl = []) => `<table class="board">${list.map((e, i) =>
 export const lights = (lit, go = false) =>
   `<div class="lights ${go ? 'go' : ''}">${[0, 1, 2].map(i => `<i class="${go || i < lit ? 'on' : ''}"></i>`).join('')}</div>`;
 
+// Legenda comandi per tipo di dispositivo (gp* = controller, kb1 = frecce, kb2 = WASD)
+const LEGEND = {
+  gp: [['Levetta / croce', 'sterza'], ['B', 'frena'], ['LB / RB', 'drift'], ['Y', 'torna in pista'], ['START', 'pausa']],
+  kb1: [['← →', 'sterza'], ['↓', 'frena'], ['Shift destro', 'drift'], ['Fine', 'torna in pista'], ['Esc', 'pausa']],
+  kb2: [['A D', 'sterza'], ['S', 'frena'], ['Shift sinistro', 'drift'], ['E', 'torna in pista'], ['Tab', 'pausa']],
+};
+const DEVICE = { gp: 'CONTROLLER', kb1: 'TASTIERA (FRECCE)', kb2: 'TASTIERA (WASD)' };
+const devKind = dev => (dev.startsWith('gp') ? 'gp' : dev);
+export const legend = dev => `<div class="legend"><div class="dev">${DEVICE[devKind(dev)]}</div><div class="keys">${LEGEND[devKind(dev)].map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div></div>`;
+
+export function showPause(players, who, sel) {
+  const opts = ['RIPRENDI', 'RICOMINCIA LA GARA', 'ESCI AL MENU'];
+  center(`<div class="pausemenu"><div class="title small">PAUSA</div><div class="who g${who + 1}">GIOCATORE ${who + 1} · ▲▼ SCEGLI · A CONFERMA</div>
+    <div class="opts">${opts.map((o, i) => `<div class="${i === sel ? 'sel' : ''}">${i === sel ? '▶ ' : ''}${o}</div>`).join('')}</div>
+    <div class="legends">${players.map((p, i) => `<div class="card"><div class="who g${i + 1}">GIOCATORE ${i + 1}</div>${legend(p.dev)}</div>`).join('')}</div></div>`);
+}
+
 export function showAttract(top) {
-  center(`<div class="title">GRAN PREMIO<br>${CONFIG.company}</div><div class="blink">PREMI START</div>${top.length ? table(top) : ''}`);
+  center(`<div class="title">GRAN PREMIO<br>${CONFIG.company}</div><div class="blink">PREMI START</div><div class="hint">CONTROLLER: START · TASTIERA: INVIO O SPAZIO · IN DUE? IL SECONDO SI UNISCE NELLA SCELTA DEL VEICOLO</div>${top.length ? table(top) : ''}`);
 }
 
 export function showSelect(ps, left) {
-  ps.forEach((p, i) => panel(i, `<div class="card"><div class="who g${i + 1}">GIOCATORE ${i + 1}</div><div class="choice">◀ ${VNAME[p.vehicle]} ▶</div><div>${dot(p.color)}${CNAME[p.color]}</div><div class="hint">${p.confirmed ? 'PRONTO!' : 'A = CONFERMA'}</div></div>`));
+  ps.forEach((p, i) => panel(i, `<div class="card"><div class="who g${i + 1}">GIOCATORE ${i + 1}</div><div class="choice">◀ ${VNAME[p.vehicle]} ▶</div><div>${dot(p.color)}${CNAME[p.color]}</div><div class="hint">${p.confirmed ? 'PRONTO!' : 'A = CONFERMA'}</div>${legend(p.dev)}</div>`));
   center(`<div class="top">SCEGLI IL VEICOLO · ${left}</div>${ps.length < 2 ? '<div class="join blink">2° GIOCATORE? PREMI START</div>' : ''}`);
 }
 

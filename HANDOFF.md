@@ -35,6 +35,9 @@ Postazione all'evento: `npm run build` una volta, poi doppio clic su [avvia.bat]
 | Freno / indietro | B | Backspace / giù | Q / S |
 | Drift (+ mini-turbo al rilascio) | LB, RB, LT, RT | Shift destro | Shift sinistro |
 | Rimettimi in pista | Y | Fine | E |
+| Pausa (menu: riprendi / ricomincia / esci) | START | Esc | Tab |
+
+La legenda dei comandi compare nella selezione veicolo (per il dispositivo di ciascun giocatore) e nel menu di pausa. Il menu di pausa lo comanda chi l'ha aperto (▲▼ + A, B/pausa per riprendere); alla ripresa c'è un conto alla rovescia di 3 s.
 
 **Menu operatore**: `Ctrl+Shift+O` (giri, volumi, risoluzione max, FPS, telecronista, fasci di luce, azzera classifica, torna al titolo).
 

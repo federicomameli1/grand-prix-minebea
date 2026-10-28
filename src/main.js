@@ -177,11 +177,11 @@ function updateSelect(dt, devs) {
   spin += dt * 0.9;
   showcase.forEach(g => (g.rotation.y = spin));
   if (players.every(p => p.confirmed) || modeT > CONFIG.selectTimeout) return startRace();
-  ui.showSelect(players.map(p => ({ ...CHOICES[p.choice], confirmed: p.confirmed })), Math.ceil(CONFIG.selectTimeout - modeT));
+  ui.showSelect(players.map(p => ({ ...CHOICES[p.choice], confirmed: p.confirmed, dev: p.dev })), Math.ceil(CONFIG.selectTimeout - modeT));
 }
 
 // --- GARA
-function startRace() {
+function startRace(skipIntro = false) {
   clearShowcase(); clearKarts();
   laps = ui.settings.laps;
   const free = shuffle(CHOICES.map((_, i) => i).filter(i => !players.some(p => p.choice === i)));
@@ -203,9 +203,10 @@ function startRace() {
     scene.add(ghostMesh);
     placeGhost(0);
   }
-  setMode('intro');
   audio.setMusic('race');
   replay = { frames: [] };
+  if (skipIntro) { setMode('countdown'); ui.setViews(players.length); ui.center(''); return; }
+  setMode('intro');
   ui.setViews(1);
 }
 
@@ -247,6 +248,8 @@ function updateCountdown() {
 
 function updateRace(dt, devs) {
   if (pause) return updatePause(dt, devs);
+  const pauser = players.findIndex(p => devs.find(d => d.id === p.dev)?.pauseP); // ognuno può mettere in pausa
+  if (pauser >= 0) { pause = { player: pauser, menu: true, sel: 0, resumeT: 0 }; players.forEach(p => p.engine.set(0)); audio.play('tick'); return; }
   const lost = players.findIndex(p => !isConnected(p.dev));
   if (lost >= 0) { pause = { player: lost, resumeT: 0 }; players.forEach(p => p.engine.set(0)); return; }
   raceT += dt;
@@ -320,6 +323,14 @@ function updateRace(dt, devs) {
 
 function updatePause(dt, devs) {
   const p = players[pause.player];
+  if (pause.menu && !pause.resumeT) { // menu di pausa: lo comanda chi l'ha aperto
+    const d = devs.find(x => x.id === p.dev);
+    if (d?.upP || d?.downP) { pause.sel = (pause.sel + (d.downP ? 1 : 2)) % 3; audio.play('tick'); }
+    if (d?.pauseP || d?.bP || (d?.aP && pause.sel === 0)) { pause.resumeT = 3; audio.play('ok'); return; }
+    if (d?.aP && pause.sel === 1) { audio.play('ok'); return startRace(true); }
+    if (d?.aP && pause.sel === 2) return enterAttract();
+    return ui.showPause(players, pause.player, pause.sel);
+  }
   if (!pause.resumeT) {
     const fresh = devs.find(d => d.aP && d.id.startsWith('gp') && !players.some(q => q.dev === d.id));
     if (fresh) p.dev = fresh.id;

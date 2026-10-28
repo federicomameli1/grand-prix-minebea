@@ -45,6 +45,13 @@
   .blink { font-size: 6vh; color: #ffd23f; animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
   .replay-tag { position: absolute; top: 3vh; left: 3vh; font-size: 6vh; color: #ff2a2a; animation: blink 1s steps(2) infinite; }
+  .legend { font-size: 2.3vh; text-align: left; margin-top: 1.5vh; line-height: 1.5; text-transform: none; }
+  .legend .dev { font-size: 2vh; opacity: .7; text-transform: uppercase; }
+  .legend .keys { display: grid; grid-template-columns: auto auto; column-gap: 1em; white-space: nowrap; }
+  .legend b { color: #ffd23f; }
+  .pausemenu { background: rgba(11,27,58,.9); border: .5vh solid #fff; border-radius: 2vh; padding: 3vh 5vh; pointer-events: none; }
+  .pausemenu .opts { font-size: 5vh; margin: 2vh 0; } .pausemenu .opts div { opacity: .6; } .pausemenu .opts .sel { opacity: 1; color: #ffd23f; }
+  .pausemenu .legends { display: flex; gap: 3vh; justify-content: center; } .pausemenu .legends .card { font-size: 3vh; padding: 1.5vh 3vh; }
   .lights { background: #111; padding: 2vh 3vh; border-radius: 3vh; border: .6vh solid #333; display: flex; gap: 2vh; }
   .lights i { width: 12vh; height: 12vh; border-radius: 50%; background: #3a0d0d; }
   .lights i.on { background: #ff2a2a; box-shadow: 0 0 5vh #ff2a2a; }

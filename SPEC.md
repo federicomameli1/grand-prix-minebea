@@ -122,6 +122,7 @@ Entrando in una nuova zona: banner HUD "Stai entrando in: STAMPAGGIO" per 2 s. P
 - **Scie luminose** del colore del kart e **fiamma del turbo** con shader animato.
 - **Fantasma del record di oggi** (solo 1 giocatore): il giro più veloce della giornata sulla postazione, salvato in locale.
 - **Tasto Y "rimettimi in pista"** (tastiera: Fine / E).
+- **Menu di pausa** (START / Esc / Tab, per ciascun giocatore): riprendi, ricomincia la gara (senza intro), esci al menu; mostra la legenda comandi di entrambi i giocatori. **Legenda comandi** anche nella selezione veicolo, specifica per controller / tastiera frecce / tastiera WASD.
 - **Minimappa** con reparti e posizioni (solo 1 giocatore).
 - **Modelli dettagliati** procedurali (muletto con montante, forche, bombola GPL, lampeggiante, fari; tugger con cofano, fari, parafanghi; vagoni con cassette KLT; pilota con caschetto e gilet). Ogni veicolo è fuso in 2 mesh per non pesare sulla grafica integrata.
 

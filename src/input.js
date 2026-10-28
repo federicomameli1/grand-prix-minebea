@@ -4,14 +4,14 @@ import { clamp } from './config.js';
 const keys = new Set(), tapped = new Set(); // tapped: premuti dall'ultimo poll, anche se già rilasciati
 addEventListener('keydown', (e) => {
   keys.add(e.code); tapped.add(e.code);
-  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Backspace'].includes(e.code)) e.preventDefault();
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Backspace', 'Tab'].includes(e.code)) e.preventDefault();
 });
 addEventListener('keyup', e => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
 const KB = {
-  kb1: { l: 'ArrowLeft', r: 'ArrowRight', u: 'ArrowUp', d: 'ArrowDown', a: 'Enter', b: 'Backspace', dr: 'ShiftRight', rs: 'End' },
-  kb2: { l: 'KeyA', r: 'KeyD', u: 'KeyW', d: 'KeyS', a: 'Space', b: 'KeyQ', dr: 'ShiftLeft', rs: 'KeyE' },
+  kb1: { l: 'ArrowLeft', r: 'ArrowRight', u: 'ArrowUp', d: 'ArrowDown', a: 'Enter', b: 'Backspace', dr: 'ShiftRight', rs: 'End', ps: 'Escape' },
+  kb2: { l: 'KeyA', r: 'KeyD', u: 'KeyW', d: 'KeyS', a: 'Space', b: 'KeyQ', dr: 'ShiftLeft', rs: 'KeyE', ps: 'Tab' },
 };
 const DEAD = 0.2;
 const ZERO = { x: 0, y: 0, a: false, b: false, start: false };
@@ -28,12 +28,12 @@ export function pollDevices() {
       id: 'gp' + gp.index,
       x: clamp(ax(0) + btn(15) - btn(14), -1, 1),
       y: clamp(ax(1) + btn(13) - btn(12), -1, 1),
-      a: !!btn(0), b: !!btn(1), start: !!btn(9), drift: !!(btn(4) || btn(5) || btn(6) || btn(7)), reset: !!btn(3),
+      a: !!btn(0), b: !!btn(1), start: !!btn(9), drift: !!(btn(4) || btn(5) || btn(6) || btn(7)), reset: !!btn(3), pause: !!btn(9),
     });
   }
   for (const [id, m] of Object.entries(KB)) {
     const k = c => +(keys.has(c) || tapped.has(c));
-    raw.push({ id, x: k(m.r) - k(m.l), y: k(m.d) - k(m.u), a: !!k(m.a), b: !!k(m.b), start: !!k(m.a), drift: keys.has(m.dr), reset: !!k(m.rs) });
+    raw.push({ id, x: k(m.r) - k(m.l), y: k(m.d) - k(m.u), a: !!k(m.a), b: !!k(m.b), start: !!k(m.a), drift: keys.has(m.dr), reset: !!k(m.rs), pause: !!k(m.ps) });
   }
   tapped.clear();
   return raw.map((d) => {
@@ -41,7 +41,7 @@ export function pollDevices() {
     prev.set(d.id, d);
     return {
       ...d,
-      aP: d.a && !p.a, bP: d.b && !p.b, startP: d.start && !p.start, resetP: d.reset && !p.reset,
+      aP: d.a && !p.a, bP: d.b && !p.b, startP: d.start && !p.start, resetP: d.reset && !p.reset, pauseP: d.pause && !p.pause,
       leftP: d.x < -0.5 && p.x >= -0.5, rightP: d.x > 0.5 && p.x <= 0.5,
       upP: d.y < -0.5 && p.y >= -0.5, downP: d.y > 0.5 && p.y <= 0.5,
     };

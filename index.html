@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gran Premio Minebea</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; cursor: none; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #views, #center {
+    position: fixed; inset: 0; pointer-events: none; color: #fff; text-transform: uppercase;
+    font-family: "Arial Black", "Segoe UI Black", Arial, sans-serif;
+    -webkit-text-stroke: .04em #0b1b3a; paint-order: stroke fill; text-shadow: 0 .06em 0 #0b1b3a;
+  }
+  #views.split::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 6px; margin-left: -3px; background: #fff; box-shadow: 0 0 0 3px #1f4fbf; }
+  .view { position: absolute; top: 0; bottom: 0; overflow: hidden; }
+  .pos { position: absolute; top: 2vh; right: 3vh; font-size: 16vh; line-height: 1; }
+  .p1 { color: #ffd23f; } .p2 { color: #d9e1e8; } .p3 { color: #e3924a; } .p4 { color: #7fb2ff; }
+  .speed { position: absolute; inset: 0; opacity: 0; transition: opacity .2s;
+    background: repeating-conic-gradient(from 0deg at 50% 45%, rgba(255,255,255,.55) 0deg 1.2deg, transparent 1.2deg 9deg);
+    -webkit-mask-image: radial-gradient(circle at 50% 45%, transparent 35%, #000 75%); mask-image: radial-gradient(circle at 50% 45%, transparent 35%, #000 75%);
+    animation: speed .15s linear infinite; }
+  .speed.on { opacity: 1; }
+  @keyframes speed { 50% { transform: scale(1.04); } }
+  .charge { position: absolute; left: 50%; bottom: 4vh; width: 30%; height: 2.2vh; margin-left: -15%; border: .4vh solid #fff; border-radius: 2vh; background: rgba(11,27,58,.6); opacity: 0; overflow: hidden; }
+  .charge.on { opacity: 1; }
+  .charge i { display: block; height: 100%; width: 0; }
+  #minimap[hidden] { display: none; }
+  #minimap { position: fixed; left: 2vh; bottom: 2vh; height: 34vh; width: auto; pointer-events: none; }
+  .lap { position: absolute; top: 3vh; left: 3vh; font-size: 6vh; }
+  .zone { position: absolute; top: 24vh; left: 0; right: 0; text-align: center; font-size: 4vh; }
+  .zone b { display: inline-block; font-size: 8vh; background: #1f4fbf; padding: .1em .4em; border-bottom: .15em solid #d32a2a; }
+  .wrong { position: absolute; top: 40%; left: 0; right: 0; text-align: center; font-size: 14vh; color: #ffd23f; animation: blink .5s steps(2) infinite; }
+  .wrong[hidden] { display: none; }
+  .msg { position: absolute; bottom: 10vh; left: 0; right: 0; text-align: center; font-size: 10vh; color: #ffd23f; }
+  .panel { position: absolute; left: 0; right: 0; bottom: 5vh; display: flex; justify-content: center; }
+  .card { background: rgba(11,27,58,.85); border: .5vh solid #fff; border-radius: 2vh; padding: 2vh 4vh; text-align: center; font-size: 5vh; -webkit-text-stroke: 0; text-shadow: none; }
+  .who { font-size: 4vh; color: #ffd23f; } .g1 { color: #7fb2ff; } .g2 { color: #ff8a8a; }
+  .dot { display: inline-block; width: .8em; height: .8em; border-radius: 50%; border: .12em solid #fff; vertical-align: -.1em; margin-right: .3em; }
+  .hint { font-size: 3vh; opacity: .85; margin-top: 1vh; }
+  .letters span { display: inline-block; width: 1.2em; font-size: 12vh; border-bottom: 1vh solid transparent; }
+  .letters .cur { border-color: #ffd23f; color: #ffd23f; }
+  #center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .title { font-size: 11vh; line-height: 1; margin-bottom: 4vh; } .title.small { font-size: 8vh; margin-bottom: 0; }
+  .blink { font-size: 6vh; color: #ffd23f; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .replay-tag { position: absolute; top: 3vh; left: 3vh; font-size: 6vh; color: #ff2a2a; animation: blink 1s steps(2) infinite; }
+  .lights { background: #111; padding: 2vh 3vh; border-radius: 3vh; border: .6vh solid #333; display: flex; gap: 2vh; }
+  .lights i { width: 12vh; height: 12vh; border-radius: 50%; background: #3a0d0d; }
+  .lights i.on { background: #ff2a2a; box-shadow: 0 0 5vh #ff2a2a; }
+  .lights.go i { background: #3cff4e; box-shadow: 0 0 5vh #3cff4e; }
+  .count { font-size: 35vh; color: #ffd23f; } .go { color: #7dff7a; }
+  .top { position: absolute; top: 3vh; left: 0; right: 0; font-size: 5vh; }
+  .skip { position: absolute; bottom: 4vh; left: 0; right: 0; font-size: 3.5vh; opacity: .85; }
+  .join { position: absolute; top: 12vh; left: 0; right: 0; font-size: 4vh; }
+  .board { margin-top: 3vh; font-size: 4.5vh; border-collapse: collapse; background: rgba(11,27,58,.75); -webkit-text-stroke: 0; text-shadow: none; }
+  .board td { padding: .3vh 2vh; } .board tr.hl { background: #d32a2a; }
+  .podium { position: absolute; bottom: 4vh; }
+  .row { font-size: 4.5vh; background: rgba(11,27,58,.8); margin: .6vh; padding: .5vh 3vh; border-radius: 1vh; }
+  .row.me { background: #1f4fbf; border: .4vh solid #fff; }
+  .cheer { font-size: 7vh; color: #ffd23f; margin-top: 1vh; }
+  .pause { font-size: 8vh; background: rgba(211,42,42,.92); padding: 4vh; border-radius: 2vh; } .pause small { font-size: 4vh; }
+  #fps { position: fixed; top: 4px; left: 50%; transform: translateX(-50%); color: #0f0; font: 14px monospace; background: #000a; padding: 2px 6px; }
+  #op { position: fixed; top: 20px; right: 20px; z-index: 10; display: grid; gap: 8px; padding: 16px; border-radius: 8px; background: #fff; color: #000; font: 16px sans-serif; cursor: auto; }
+  #op[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="views"></div>
+<div id="center"></div>
+<div id="fps" hidden></div>
+<canvas id="minimap" width="200" height="260" hidden></canvas>
+<form id="op" hidden>
+  <b>Menu operatore</b>
+  <label>Giri (classifica solo con 3) <input name="laps" type="number" min="1" max="5"></label>
+  <label>Musica <input name="music" type="range" min="0" max="1" step="0.05"></label>
+  <label>Effetti <input name="sfx" type="range" min="0" max="1" step="0.05"></label>
+  <label>Risoluzione max <select name="maxRes"><option value="720">720p</option><option value="1080">1080p</option></select></label>
+  <label><input name="fps" type="checkbox"> Mostra FPS</label>
+  <label><input name="voice" type="checkbox"> Telecronista</label>
+  <label><input name="fancy" type="checkbox"> Fasci di luce (spegnere se scatta)</label>
+  <button type="button" name="toAttract">Torna al titolo</button>
+  <button type="button" name="resetBoard">Azzera classifica</button>
+  <button type="button" name="closeOp">Chiudi (Ctrl+Shift+O)</button>
+</form>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

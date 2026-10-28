@@ -1,0 +1,4 @@
+node_modules/
+dist/
+tools/voce/.venv/
+.claude/

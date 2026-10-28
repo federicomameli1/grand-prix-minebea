@@ -1,0 +1,11 @@
+Gran Premio Minebea - crediti
+
+Musica (CC0, nessuna attribuzione richiesta - citata per cortesia)
+- "Pure Raceway" e "Pure Raceway (climax)" - MintoDog - https://opengameart.org/content/pure-raceway
+- "Sunny City" - MintoDog - https://opengameart.org/content/sunny-city
+
+Voce del telecronista
+- Generata in locale con Kokoro-82M (hexgrad, licenza Apache 2.0), voce if_sara - https://huggingface.co/hexgrad/Kokoro-82M
+  Script: tools/voce/genera.py
+
+Tutto il resto (modelli 3D, pista, effetti sonori) e' generato dal codice del progetto.

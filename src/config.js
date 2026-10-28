@@ -14,6 +14,7 @@ export const CONFIG = {
   kartRadius: 1.1,
   wallBounce: 0.4,      // al contatto col muro il kart viene rimbalzato via (niente "saponetta" lungo il bordo)
   wallSlow: 0.85,
+  wallEscape: 0.2,      // rad: angolo minimo con cui il kart si stacca dal muro
   driftSteer: [0.15, 0.45, 0.9], // drift: frazione dello sterzo pieno con levetta contro / al centro / dentro la curva
   driftMaxAngle: 0.55,  // rad: in drift il kart non punta mai più di ~30° fuori dalla direzione della pista
   driftEase: 0.3,       // s per entrare in drift (niente scatto iniziale)

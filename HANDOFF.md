@@ -172,7 +172,7 @@ Aggiungendo una frase: aggiungerla a `FRASI` in `genera.py` **e** a `VOICE` in `
 ### Problemi noti / stranezze
 
 - Il fantasma è salvato con la chiave `gpf_ghost_v2` (il formato include la quota); cambiando il formato dei frame aumentare la versione.
-- Nessun test automatico: la verifica è stata fatta a mano nel browser (screenshot + misure via `window.__dbg`). Se si aggiunge logica delicata (fisica, giri, classifica) conviene un piccolo test eseguibile.
+- Nessun test automatico vero: la verifica è fatta nel browser (screenshot + misure via `window.__dbg`). C'è un controllo di regressione da incollare nella console con `npm run dev`: [tools/checks/muri.js](tools/checks/muri.js) (kart incollati al muro esterno delle curve, corretto il 2026-10-28). Se si aggiunge logica delicata conviene aggiungere controlli simili.
 - `vite build` avvisa che il bundle supera 500 kB (è three.js): irrilevante in locale.
 - In sviluppo, se il kart umano non viene comandato, va lento e sbatte (ostacoli/AGV): è normale, non un bug.
 

@@ -59,7 +59,7 @@ export class Kart {
 
   place(prog, d) {
     Object.assign(this, { prog, d, h: 0, v: 0, boostT: 0, padCD: 0, ghostT: 0, wrongT: 0, stuckT: 0, wall: false, finished: false, finishTime: 0, static: false,
-      drifting: false, driftDir: 0, driftT: 0, driftVis: 0, charge: 0, steerVis: 0, events: [],
+      drifting: false, driftDir: 0, driftT: 0, driftVis: 0, charge: 0, steerVis: 0, events: [], wallCD: 0,
       y: this.track.height(prog), vy: 0, air: false, airT: 0 });
     this.fillTrail();
     this.sync();
@@ -125,17 +125,22 @@ export class Kart {
       this.h -= (this.h - Math.sign(this.h) * CONFIG.driftMaxAngle) * Math.min(1, 6 * dt);
     }
 
-    // muro: rimbalzo netto verso la pista invece di scivolare lungo il bordo
+    // muro: rimbalzo netto verso la pista invece di scivolare lungo il bordo.
+    // All'esterno di una curva la pista riporta il kart contro il muro: per non restare incollati
+    // si esce sempre con un angolo minimo, e l'urto (rallentamento, suono, vibrazione) vale una volta ogni wallCD.
     const lim = this.track.hw - CONFIG.kartRadius * 0.8;
     if (Math.abs(this.d) > lim) {
       const side = Math.sign(this.d);
       this.d = side * lim;
-      if (side * Math.sin(this.h) > 0) this.h = -this.h * CONFIG.wallBounce;
-      if (!this.wall) { this.v *= CONFIG.wallSlow; this.hit(); this.events.push(side > 0 ? 'wallL' : 'wallR'); this.endDrift(false); }
+      if (side * Math.sin(this.h) >= 0 || Math.cos(this.h) < 0) this.h = -side * Math.min(0.6, Math.max(Math.abs(this.h) * CONFIG.wallBounce, CONFIG.wallEscape));
+      if (!this.wall && this.wallCD <= 0) {
+        this.v *= CONFIG.wallSlow; this.hit(); this.events.push(side > 0 ? 'wallL' : 'wallR'); this.endDrift(false);
+        this.wallCD = 0.5;
+      }
       this.wall = true;
-    } else this.wall = false;
+    } else if (Math.abs(this.d) < lim - 0.3) this.wall = false; // isteresi: strisciare lungo il muro = un solo contatto
 
-    this.padCD -= dt; this.ghostT -= dt; this.bumpCD -= dt;
+    this.padCD -= dt; this.ghostT -= dt; this.bumpCD -= dt; this.wallCD -= dt;
     this.wrongT = Math.cos(this.h) < 0 ? this.wrongT + dt : 0;
     this.stuckT = this.v < 1 && !brake ? this.stuckT + dt : 0;
     if (this.wrongT > 4 || this.stuckT > 4) this.respawn();

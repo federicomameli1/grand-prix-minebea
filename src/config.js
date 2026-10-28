@@ -30,7 +30,6 @@ export const CONFIG = {
   rubberMin: 0.8,
   rubberMax: 1.15,
   catchUpMax: 0.08,     // bonus max per l'umano dietro all'altro umano
-  selectTimeout: 20,
   podiumTime: 7,
   initialsTimeout: 15,
   boardTime: 8,

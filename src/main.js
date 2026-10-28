@@ -176,8 +176,8 @@ function updateSelect(dt, devs) {
   }
   spin += dt * 0.9;
   showcase.forEach(g => (g.rotation.y = spin));
-  if (players.every(p => p.confirmed) || modeT > CONFIG.selectTimeout) return startRace();
-  ui.showSelect(players.map(p => ({ ...CHOICES[p.choice], confirmed: p.confirmed, dev: p.dev })), Math.ceil(CONFIG.selectTimeout - modeT));
+  if (players.every(p => p.confirmed)) return startRace();
+  ui.showSelect(players.map(p => ({ ...CHOICES[p.choice], confirmed: p.confirmed, dev: p.dev })));
 }
 
 // --- GARA
@@ -227,9 +227,10 @@ function updateIntro(dt, devs) {
 }
 
 function introCam(cam) {
-  const s = track.L * Math.min(1, modeT / CONFIG.introTime), a = track.point(s - 30, 0), b = track.point(s + 15, 0);
-  cam.position.set(a.x, track.height(s - 30) + 6.5, a.z); // sotto le lampade e le capriate
-  cam.lookAt(b.x, 0, b.z);
+  // ripresa laterale, 12 m fuori dalla pista: evita insegne e portali sopra la strada e resta sotto le lampade (11,6 m)
+  const s = track.L * Math.min(1, modeT / CONFIG.introTime), a = track.point(s - 25, 12), b = track.point(s + 10, 0);
+  cam.position.set(a.x, Math.max(7, track.height(s - 25) + 3.5), a.z);
+  cam.lookAt(b.x, track.height(s + 10) + 0.5, b.z);
   cam.fov = 60;
   return cam;
 }
@@ -470,31 +471,62 @@ function updateBoard(dt, devs) {
   if (modeT > CONFIG.boardTime || (modeT > 1 && devs.some(d => d.startP))) enterAttract();
 }
 
-// --- minimappa (solo con 1 giocatore): sfondo disegnato una volta, poi solo i puntini
+// --- minimappa (solo con 1 giocatore): pannello traslucido (CSS), pista disegnata una volta, poi solo i segnaposto.
+// Canvas a risoluzione doppia per tratti nitidi su TV; il soppalco è evidenziato in blu, la partenza a scacchi.
 const mapEl = document.getElementById('minimap'), mapCtx = mapEl.getContext('2d');
+const hexCss = h => '#' + h.toString(16).padStart(6, '0');
 const mapBg = (() => {
-  const pts = track.outline, xs = pts.map(p => p.x), zs = pts.map(p => p.z);
-  const x0 = Math.min(...xs) - 12, x1 = Math.max(...xs) + 12, z0 = Math.min(...zs) - 12, z1 = Math.max(...zs) + 12;
+  const pts = track.outline, xs = pts.map(p => p.x), zs = pts.map(p => p.z), pad = 16;
+  const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, z0 = Math.min(...zs) - pad, z1 = Math.max(...zs) + pad;
   const sc = Math.min(mapEl.width / (x1 - x0), mapEl.height / (z1 - z0));
-  const map = (x, z) => [(x - x0) * sc, (z - z0) * sc];
+  const ox = (mapEl.width - (x1 - x0) * sc) / 2, oz = (mapEl.height - (z1 - z0) * sc) / 2;
+  const map = (x, z) => [ox + (x - x0) * sc, oz + (z - z0) * sc];
   const c = document.createElement('canvas'); c.width = mapEl.width; c.height = mapEl.height;
   const g = c.getContext('2d');
-  g.fillStyle = 'rgba(11,27,58,.55)'; g.fillRect(0, 0, c.width, c.height);
-  for (const a of track.areas) { const [ax, az] = map(a.x0, a.z0); g.fillStyle = a.color + '88'; g.fillRect(ax, az, (a.x1 - a.x0) * sc, (a.z1 - a.z0) * sc); }
-  g.lineJoin = 'round';
-  for (const [w, col] of [[11, '#fff'], [7, '#50555d']]) {
-    g.beginPath(); pts.forEach((p, i) => g[i ? 'lineTo' : 'moveTo'](...map(p.x, p.z))); g.closePath();
-    g.lineWidth = w; g.strokeStyle = col; g.stroke();
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
+  for (const a of track.areas) { // reparti: forme morbide e iniziale del nome
+    const [ax, az] = map(a.x0, a.z0), w = (a.x1 - a.x0) * sc, h = (a.z1 - a.z0) * sc;
+    rr(ax, az, w, h, 14); g.fillStyle = a.color + '55'; g.fill();
+    g.fillStyle = 'rgba(255,255,255,.75)'; g.font = '700 34px Bahnschrift, Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(a.name[0], ax + w / 2, az + h / 2);
   }
+  const path = () => { g.beginPath(); pts.forEach((p, i) => g[i ? 'lineTo' : 'moveTo'](...map(p.x, p.z))); g.closePath(); };
+  g.lineJoin = g.lineCap = 'round';
+  path(); g.lineWidth = 30; g.strokeStyle = 'rgba(10,31,77,.9)'; g.stroke();   // bordo scuro
+  path(); g.lineWidth = 19; g.strokeStyle = '#eef3f9'; g.stroke();             // strada
+  g.lineWidth = 19; g.strokeStyle = '#7fb2ff';                                  // tratti sopraelevati
+  for (let s = 0; s < track.L; s += 4) if (track.height(s) > 1) {
+    const a = track.point(s, 0), b = track.point(s + 4, 0);
+    g.beginPath(); g.moveTo(...map(a.x, a.z)); g.lineTo(...map(b.x, b.z)); g.stroke();
+  }
+  const q = track.sample(0), [sx, sz] = map(q.x, q.z), ang = Math.atan2(q.tz, q.tx) + Math.PI / 2; // linea del traguardo
+  g.save(); g.translate(sx, sz); g.rotate(ang);
+  for (let i = -3; i < 3; i++) for (let j = 0; j < 2; j++) { g.fillStyle = (i + j) % 2 ? '#111' : '#fff'; g.fillRect(i * 5, -5 + j * 5, 5, 5); }
+  g.restore();
   return { c, map };
 })();
 function minimap() {
   if (mapEl.hidden) return;
-  mapCtx.drawImage(mapBg.c, 0, 0);
-  const dot = (x, z, r, fill) => { const [px, pz] = mapBg.map(x, z); mapCtx.beginPath(); mapCtx.arc(px, pz, r, 0, 7); mapCtx.fillStyle = fill; mapCtx.fill(); mapCtx.lineWidth = 2; mapCtx.strokeStyle = '#0b1b3a'; mapCtx.stroke(); };
-  if (ghostMesh?.visible) dot(ghostMesh.position.x, ghostMesh.position.z, 5, '#bfe6ff');
-  for (const k of karts) if (!k.human) dot(k.pos.x, k.pos.z, 5, '#' + CONFIG.colors[k.color].toString(16).padStart(6, '0'));
-  for (const k of karts) if (k.human) dot(k.pos.x, k.pos.z, 8, '#ffd23f');
+  const g = mapCtx;
+  g.clearRect(0, 0, mapEl.width, mapEl.height);
+  g.drawImage(mapBg.c, 0, 0);
+  const dot = (x, z, r, fill) => {
+    const [px, pz] = mapBg.map(x, z);
+    g.beginPath(); g.arc(px, pz, r, 0, 7); g.fillStyle = fill; g.fill(); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke();
+  };
+  if (ghostMesh?.visible) { // fantasma: cerchio vuoto tratteggiato
+    const [px, pz] = mapBg.map(ghostMesh.position.x, ghostMesh.position.z);
+    g.setLineDash([4, 3]); g.beginPath(); g.arc(px, pz, 12, 0, 7); g.lineWidth = 4; g.strokeStyle = '#bfe6ff'; g.stroke(); g.setLineDash([]);
+  }
+  for (const k of karts) if (!k.human) dot(k.pos.x, k.pos.z, 11, hexCss(CONFIG.colors[k.color]));
+  for (const k of karts) if (k.human) { // giocatore: freccia orientata con alone che pulsa
+    const [px, pz] = mapBg.map(k.pos.x, k.pos.z), a = Math.atan2(Math.cos(k.yaw), Math.sin(k.yaw));
+    g.beginPath(); g.arc(px, pz, 24 + Math.sin(time * 6) * 4, 0, 7); g.fillStyle = 'rgba(255,196,0,.28)'; g.fill();
+    g.save(); g.translate(px, pz); g.rotate(a);
+    g.beginPath(); g.moveTo(20, 0); g.lineTo(-13, 13); g.lineTo(-6, 0); g.lineTo(-13, -13); g.closePath();
+    g.fillStyle = '#ffc400'; g.fill(); g.lineWidth = 4; g.strokeStyle = '#0a1f4d'; g.stroke();
+    g.restore();
+  }
 }
 
 // --- camere
@@ -524,23 +556,26 @@ function cinematic(cam, dt) {
   if (modeT > (shot + 1) * 6) shot++;
   const k = karts[shot % karts.length], [back, up, side] = [[-8, 5, 0], [-2, 2, 6], [8, 1.5, 0]][shot % 3];
   const fx = Math.sin(k.yaw), fz = Math.cos(k.yaw);
-  v1.set(k.pos.x + fx * back + fz * side, up, k.pos.z + fz * back - fx * side);
+  v1.set(k.pos.x + fx * back + fz * side, k.pos.y + up, k.pos.z + fz * back - fx * side);
   if (shot !== lastShot) { cam.position.copy(v1); lastShot = shot; } else cam.position.lerp(v1, 1 - Math.exp(-4 * dt));
-  cam.lookAt(k.pos.x, 1, k.pos.z);
+  cam.lookAt(k.pos.x, k.pos.y + 1, k.pos.z);
   cam.fov = 60;
   return cam;
 }
 
-function fixedCam(cam, x, z, back, up, fov, lookY = 1) {
-  cam.position.set(x, up, z - back);
-  cam.lookAt(x, lookY, z);
+function fixedCam(cam, x, z, back, up, fov, lookY = 1, dx = 0) { // dx > 0 sposta il soggetto a sinistra sullo schermo
+  cam.position.set(x - dx, up, z - back);
+  cam.lookAt(x - dx, lookY, z);
   cam.fov = fov;
   return cam;
 }
 
 function draw(dt) {
   if (mode === 'attract') return render([cinematic(cams[0], dt)]);
-  if (mode === 'select') return render(players.map((_, i) => fixedCam(cams[i], track.showcase[i].x, track.showcase[i].z, 7.5, 2.6, 50, 0.2)));
+  if (mode === 'select') { // 1 giocatore: kart a sinistra e scheda a destra; in due: kart in alto e scheda sotto
+    const solo = players.length === 1;
+    return render(players.map((_, i) => fixedCam(cams[i], track.showcase[i].x, track.showcase[i].z, solo ? 7 : 10, solo ? 2.4 : 2.6, solo ? 46 : 50, solo ? 0.5 : -1.3, solo ? 2.6 : 0)));
+  }
   if (mode === 'intro') return render([introCam(cams[0])]);
   if (mode === 'countdown' || mode === 'race') { minimap(); return render(players.map((p, i) => chase(cams[i], p, dt))); }
   if (mode === 'replay') return render([replayCam(cams[0])]);

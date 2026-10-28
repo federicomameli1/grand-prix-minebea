@@ -345,7 +345,7 @@ export function buildTrack(scene) {
   const ID = new THREE.Matrix4();
   const rngShaft = mulberry32(3);
   // --- tetto a shed (denti di sega): falda inclinata opaca + vetrata verticale rivolta a nord, capriate, lampade
-  const WALL_H = 9, TOOTH = 10, RISE = 4.2;
+  const WALL_H = 14, TOOTH = 10, RISE = 4.2; // alto abbastanza per camere e portali sopra il soppalco (5 m)
   const roofPos = [], glassPos = [];
   const quad = (arr, a, b, c, d) => arr.push(...a, ...b, ...c, ...a, ...c, ...d);
   for (let z = z0; z < z1 - 0.1; z += TOOTH) {
@@ -368,8 +368,8 @@ export function buildTrack(scene) {
   const lampGlow = [], pools = [];
   for (let z = z0 + TOOTH / 2; z < z1; z += TOOTH * 2) for (let x = x0 + 10; x < x1 - 5; x += 16) {
     cyl(0.03, 1.4, x, WALL_H - 1.4 - 0.7, z, C.dark, ID);
-    parts.push(paint(new THREE.CylinderGeometry(0.25, 0.75, 0.6, 14, 1, true).translate(x, 6.9, z), C.dark));
-    lampGlow.push(new THREE.CircleGeometry(0.7, 16).rotateX(Math.PI / 2).translate(x, 6.6, z));
+    parts.push(paint(new THREE.CylinderGeometry(0.25, 0.75, 0.6, 14, 1, true).translate(x, WALL_H - 2.1, z), C.dark));
+    lampGlow.push(new THREE.CircleGeometry(0.7, 16).rotateX(Math.PI / 2).translate(x, WALL_H - 2.4, z));
     pools.push(new THREE.PlaneGeometry(12, 12).rotateX(-Math.PI / 2).translate(x, 0.035, z));
   }
   scene.add(new THREE.Mesh(mergeGeometries(lampGlow), new THREE.MeshBasicMaterial({ color: 0xfff1cc })));
@@ -392,14 +392,14 @@ export function buildTrack(scene) {
   scene.add(shaftMesh); fancy.push(shaftMesh);
 
   for (const [w, l, x, z] of [[W, 1, cx, z0], [W, 1, cx, z1], [1, D, x0, cz], [1, D, x1, cz]]) {
-    box(w, 9, l, x, 4.5, z, C.wall, ID);
+    box(w, 14, l, x, 7, z, C.wall, ID);
     box(w + 0.2, 1.5, l + 0.2, x, 0.75, z, C.blue, ID);
     box(w + 0.2, 0.25, l + 0.2, x, 1.65, z, C.red, ID);
   }
   // colonne del capannone, dove non intralciano
   for (let x = x0 + 12; x < x1 - 6; x += 24) for (let z = z0 + 12; z < z1 - 6; z += 24) {
     if (nearRoad(x, z, hw + 3) || (z > maxZ + 6 && Math.abs(x - podium.x) < 30)) continue;
-    box(0.6, 9, 0.6, x, 4.5, z, C.steel, ID);
+    box(0.6, 14, 0.6, x, 7, z, C.steel, ID);
     box(0.66, 1.2, 0.66, x, 0.6, z, C.yellow, ID);
   }
 

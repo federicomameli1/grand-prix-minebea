@@ -94,13 +94,13 @@ export function showAttract(top) {
     ${top.length ? table(top) : ''}`);
 }
 
-export function showSelect(ps, left) {
+export function showSelect(ps) {
   ps.forEach((p, i) => panel(i, `<div class="pass g${i + 1}"><header>Giocatore ${i + 1}</header><div class="body">
     <div class="picker"><span class="arrow">◀</span><span class="name">${VNAME[p.vehicle]}</span><span class="arrow">▶</span></div>
     <div class="swatches">${Object.keys(CONFIG.colors).map(c => `<i class="${c === p.color ? 'on' : ''}" style="background:${css(c)}"></i>`).join('')}</div>
     <div class="status">${p.confirmed ? 'Pronto, si aspetta l\u2019altro giocatore' : `◀ ▶ cambia, ${CONFIRM[devKind(p.dev)]} conferma`}</div>
     ${legend(p.dev)}</div>${p.confirmed ? '<div class="stamp">Pronto!</div>' : ''}</div>`));
-  center(`<div class="top-title">Scegli il veicolo <span class="timer">${left}</span></div>${ps.length < 2 ? '<div class="callout"><span>Giocatore 2? Premi START, Invio o Spazio</span></div>' : ''}`);
+  center(`<div class="top-title">Scegli il veicolo</div>${ps.length < 2 ? '<div class="callout"><span>Giocatore 2? Premi START, Invio o Spazio</span></div>' : ''}`);
 }
 
 export function showPodium(rows) {

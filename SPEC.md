@@ -31,7 +31,7 @@ ATTRACT ──START──> SELEZIONE ──> COUNTDOWN ──> GARA ──> PODI
 2. **Selezione**: il primo pad che preme START diventa **G1 (metà sinistra)**. Si parte subito in **schermo intero, 1 giocatore**.
    - Per 2 giocatori: nella schermata di selezione un secondo pad che preme START entra come **G2 (metà destra)**. La gara parte quando tutti i giocatori entrati hanno confermato (con 1 solo giocatore: appena G1 conferma), o allo scadere del timeout.
    - Ogni giocatore sceglie: veicolo (muletto / tugger) e colore (bianco / blu / rosso). Due umani non possono avere stesso veicolo+colore.
-   - Timeout selezione 20 s → conferma automatica della scelta corrente.
+   - Nessun timeout nella selezione (deciso dopo il playtest): si parte quando tutti hanno confermato.
 3. **Countdown** 3-2-1-VIA con SFX. Nessun "turbo partenza" (troppo difficile per i piccoli).
 4. **Gara** 3 giri (configurabile dall'operatore, 1-5).
 5. **Fine gara**: finisce **quando tutti gli umani hanno tagliato il traguardo**. Le CPU non ancora arrivate vengono piazzate in base alla posizione corrente.

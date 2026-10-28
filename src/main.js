@@ -222,7 +222,7 @@ function placeGhost(t) {
 function updateIntro(dt, devs) {
   const skip = modeT > 0.5 && devs.some(d => players.some(p => p.dev === d.id) && (d.aP || d.startP));
   const s = track.L * Math.min(1, modeT / CONFIG.introTime);
-  ui.center(`<div class="top">${track.zoneAt(s).name}</div>${ghostRun ? '<div class="join">SFIDA IL FANTASMA DEL RECORD DI OGGI!</div>' : ''}<div class="skip">A = SALTA</div>`);
+  ui.showIntro(track.zoneAt(s).name, !!ghostRun);
   if (skip || modeT > CONFIG.introTime) { setMode('countdown'); ui.setViews(players.length); ui.center(''); }
 }
 
@@ -291,7 +291,7 @@ function updateRace(dt, devs) {
     const lap = Math.min(laps, Math.floor(Math.max(0, k.prog) / track.L) + 1);
     if (lap > p.lap) {
       p.lap = lap; audio.play('lap');
-      p.banner = lap === laps ? 'ULTIMO GIRO!' : `GIRO ${lap}`; p.bannerT = 2;
+      p.banner = lap === laps ? 'Ultimo giro!' : `Giro ${lap}`; p.bannerT = 2;
       voice(lap === laps ? 'ultimo' : `giro${lap}`, true);
       if (lap === laps && laps > 1) audio.setMusic('race_final');
       fx.burst(k.pos.x, 3, k.pos.z, 60, CONFETTI, 7, 0.3, 1.8, 7);
@@ -335,11 +335,11 @@ function updatePause(dt, devs) {
     const fresh = devs.find(d => d.aP && d.id.startsWith('gp') && !players.some(q => q.dev === d.id));
     if (fresh) p.dev = fresh.id;
     if (isConnected(p.dev)) pause.resumeT = 3;
-    ui.center(`<div class="pause">CONTROLLER SCOLLEGATO<br><small>Ricollega il controller del Giocatore ${pause.player + 1}</small></div>`);
+    ui.showDisconnected(pause.player + 1);
   } else {
     pause.resumeT -= dt;
     if (pause.resumeT <= 0) { pause = null; return; }
-    ui.center(`<div class="count">${Math.ceil(pause.resumeT)}</div>`);
+    ui.showResume(Math.ceil(pause.resumeT));
   }
 }
 
@@ -351,10 +351,10 @@ function hudRace(dt) {
     p.zoneT -= dt;
     ui.hud(i, {
       pos: k.finished ? k.rank : order.indexOf(k) + 1,
-      lap: `GIRO ${p.lap}/${laps}`,
+      lap: [p.lap, laps],
       zone: p.zoneT > 0 && mode === 'race' ? z : '',
       wrong: k.wrongT > 2,
-      msg: k.finished ? 'ARRIVATO!' : (p.bannerT > 0 ? p.banner : ''),
+      msg: k.finished ? 'Arrivato!' : (p.bannerT > 0 ? p.banner : ''),
       boost: k.boostT > 0,
       charge: k.drifting ? { frac: Math.min(1, k.charge / CONFIG.driftLvl.at(-1)), lvl: k.driftLevel() } : null,
     });
@@ -382,7 +382,7 @@ function enterReplay() {
   if (ghostMesh) ghostMesh.visible = false;
   setMode('replay');
   ui.setViews(1);
-  ui.center('<div class="replay-tag">● REPLAY</div><div class="skip">A = SALTA</div>');
+  ui.showReplay();
   voice('replay', true);
 }
 
@@ -427,7 +427,7 @@ function enterPodium() {
   audio.play('applause');
   setMode('podium');
   ui.setViews(1);
-  ui.showPodium(ranking.map(k => ({ name: k.human ? `GIOCATORE ${k.name.slice(1)}` : k.name, human: k.human, color: k.color, time: k.finished ? k.finishTime : null })));
+  ui.showPodium(ranking.map(k => ({ name: k.human ? `Giocatore ${k.name.slice(1)}` : k.name, human: k.human, color: k.color, vehicle: k.vehicle, time: k.finished ? k.finishTime : null })));
 }
 
 function toInitials() {

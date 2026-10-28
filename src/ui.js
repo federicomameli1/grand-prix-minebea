@@ -26,10 +26,9 @@ export const ghost = {
 const BAD = ['CAZ', 'CUL', 'FIG', 'MER', 'PUT', 'TRO', 'STR', 'VAF', 'FAN', 'PEN', 'SEX', 'DIO', 'ANO', 'NEG', 'GAY', 'FAG', 'ASS', 'WTF'];
 export const cleanName = n => (BAD.includes(n) ? '???' : n);
 
-const VNAME = { muletto: 'MULETTO', tugger: 'TUGGER' };
-const CNAME = { bianco: 'BIANCO', blu: 'BLU', rosso: 'ROSSO' };
+const VNAME = { muletto: 'Muletto', tugger: 'Tugger' };
 const css = c => '#' + CONFIG.colors[c].toString(16).padStart(6, '0');
-const dot = c => `<span class="dot" style="background:${css(c)}"></span>`;
+const vdot = e => `<span class="vdot"><i style="background:${css(e.color)}"></i>${VNAME[e.vehicle]}</span>`;
 export const fmtTime = t => `${Math.floor(t / 60)}:${(t % 60).toFixed(2).padStart(5, '0')}`;
 
 const html = (el, s) => { if (el && el._h !== s) { el._h = s; el.innerHTML = s; } }; // tocca il DOM solo se cambia
@@ -39,73 +38,93 @@ export const center = s => html(centerEl, s);
 export function setViews(n) {
   viewsEl.className = n === 2 ? 'split' : '';
   viewsEl.innerHTML = Array.from({ length: n }, (_, i) =>
-    `<div class="view" style="left:${i * 100 / n}%;width:${100 / n}%"><div class="speed"></div><div class="pos"></div><div class="lap"></div><div class="zone"></div><div class="wrong" hidden>↻ GIRA!</div><div class="msg"></div><div class="panel"></div><div class="charge"><i></i></div></div>`).join('');
+    `<div class="view" style="left:${i * 100 / n}%;width:${100 / n}%"><div class="speed"></div><div class="pos"></div><div class="lap"></div><div class="zone"></div>`
+    + '<div class="wrong" hidden><div class="noentry"></div><span>Gira!</span></div><div class="msg"></div><div class="panel"></div>'
+    + '<div class="charge"><i><b></b></i><i><b></b></i><i><b></b></i></div></div>').join('');
 }
 
-const CHARGE_COLORS = ['#ffffff', '#4fc3ff', '#ff9a1f', '#c04dff'];
+// HUD di gara: lap = [giro, giri], charge = { frac 0..1, lvl } durante il drift
 export function hud(i, { pos, lap, zone, wrong, msg, boost, charge }) {
   const v = viewsEl.children[i];
   if (!v) return;
   const [speedEl, posEl, lapEl, zoneEl, wrongEl, msgEl, , chargeEl] = v.children;
   speedEl.classList.toggle('on', !!boost);
   chargeEl.classList.toggle('on', !!charge);
-  if (charge) { chargeEl.firstChild.style.width = `${charge.frac * 100}%`; chargeEl.firstChild.style.background = CHARGE_COLORS[charge.lvl]; }
-  html(posEl, `${pos}°`);
+  if (charge) [...chargeEl.children].forEach((seg, j) => { seg.firstChild.style.width = `${clamp(charge.frac * 3 - j, 0, 1) * 100}%`; });
+  html(posEl, `<span>${pos}<sup>°</sup></span>`);
   posEl.className = `pos p${pos}`;
-  html(lapEl, lap);
-  html(zoneEl, zone ? `Stai entrando in:<br><b>${zone}</b>` : '');
+  html(lapEl, lap ? `<div class="tag"><small>Giro</small><b>${lap[0]}<i>/${lap[1]}</i></b></div>` : '');
+  html(zoneEl, zone ? `<div class="sign"><small>Stai entrando in</small><b>${zone}</b></div>` : '');
   wrongEl.hidden = !wrong;
-  html(msgEl, msg);
+  html(msgEl, msg ? `<div class="banner"><span>${msg}</span></div>` : '');
 }
 const panel = (i, s) => html(viewsEl.children[i]?.querySelector('.panel'), s);
 
-const table = (list, hl = []) => `<table class="board">${list.map((e, i) =>
-  `<tr class="${hl.includes(e.at) ? 'hl' : ''}"><td>${i + 1}°</td><td>${e.name}</td><td>${dot(e.color)}${VNAME[e.vehicle]}</td><td>${fmtTime(e.time)}</td></tr>`).join('')}</table>`;
+const table = (list, hl = []) => `<div class="board"><h3>Tabellone di oggi</h3>${list.length
+  ? `<ol>${list.map((e, i) => `<li class="${hl.includes(e.at) ? 'hl' : ''}"><span class="rank r${i + 1}">${i + 1}</span><span class="name">${e.name}</span>${vdot(e)}<span class="time">${fmtTime(e.time)}</span></li>`).join('')}</ol>`
+  : '<div class="empty">Ancora nessun tempo: il primo record può essere il tuo.</div>'}</div>`;
 
+// partenza: torre andon (rosso, arancio, giallo... verde = via)
 export const lights = (lit, go = false) =>
-  `<div class="lights ${go ? 'go' : ''}">${[0, 1, 2].map(i => `<i class="${go || i < lit ? 'on' : ''}"></i>`).join('')}</div>`;
+  `<div class="andon ${go ? 'go' : ''}"><div class="stack">${[0, 1, 2, 3].map(i => `<i class="${(go ? i === 3 : i < lit) ? 'on' : ''}"></i>`).join('')}</div><div class="pole"></div><div class="base"></div></div>`;
 
 // Legenda comandi per tipo di dispositivo (gp* = controller, kb1 = frecce, kb2 = WASD)
 const LEGEND = {
-  gp: [['Levetta / croce', 'sterza'], ['B', 'frena'], ['LB / RB', 'drift'], ['Y', 'torna in pista'], ['START', 'pausa']],
+  gp: [['Levetta', 'sterza'], ['B', 'frena'], ['LB / RB', 'drift'], ['Y', 'torna in pista'], ['START', 'pausa']],
   kb1: [['← →', 'sterza'], ['↓', 'frena'], ['Shift destro', 'drift'], ['Fine', 'torna in pista'], ['Esc', 'pausa']],
-  kb2: [['A D', 'sterza'], ['S', 'frena'], ['Shift sinistro', 'drift'], ['E', 'torna in pista'], ['Tab', 'pausa']],
+  kb2: [['A  D', 'sterza'], ['S', 'frena'], ['Shift sinistro', 'drift'], ['E', 'torna in pista'], ['Tab', 'pausa']],
 };
-const DEVICE = { gp: 'CONTROLLER', kb1: 'TASTIERA (FRECCE)', kb2: 'TASTIERA (WASD)' };
+const DEVICE = { gp: 'Controller', kb1: 'Tastiera, frecce', kb2: 'Tastiera, WASD' };
+const CONFIRM = { gp: 'A', kb1: 'Invio', kb2: 'Spazio' };
 const devKind = dev => (dev.startsWith('gp') ? 'gp' : dev);
-export const legend = dev => `<div class="legend"><div class="dev">${DEVICE[devKind(dev)]}</div><div class="keys">${LEGEND[devKind(dev)].map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join('')}</div></div>`;
+export const legend = dev => `<div class="legend"><div class="dev">${DEVICE[devKind(dev)]}</div><div class="keys">${LEGEND[devKind(dev)].map(([k, v]) => `<span class="key">${k}</span><span>${v}</span>`).join('')}</div></div>`;
 
 export function showPause(players, who, sel) {
-  const opts = ['RIPRENDI', 'RICOMINCIA LA GARA', 'ESCI AL MENU'];
-  center(`<div class="pausemenu"><div class="title small">PAUSA</div><div class="who g${who + 1}">GIOCATORE ${who + 1} · ▲▼ SCEGLI · A CONFERMA</div>
-    <div class="opts">${opts.map((o, i) => `<div class="${i === sel ? 'sel' : ''}">${i === sel ? '▶ ' : ''}${o}</div>`).join('')}</div>
-    <div class="legends">${players.map((p, i) => `<div class="card"><div class="who g${i + 1}">GIOCATORE ${i + 1}</div>${legend(p.dev)}</div>`).join('')}</div></div>`);
+  const opts = ['Riprendi', 'Ricomincia la gara', 'Esci al menu'];
+  center(`<div class="scrim"></div><div class="pausemenu"><div class="stripe"></div><div class="inner"><h2>Pausa</h2>
+    <div class="whose">Sceglie il giocatore ${who + 1} con ▲ ▼ e ${CONFIRM[devKind(players[who].dev)]}</div>
+    <div class="opts">${opts.map((o, i) => `<div class="opt ${i === sel ? 'sel' : ''}">${o}</div>`).join('')}</div>
+    <div class="legends">${players.map((p, i) => `<div class="g${i + 1}"><h5>Giocatore ${i + 1}</h5>${legend(p.dev)}</div>`).join('')}</div></div></div>`);
 }
 
 export function showAttract(top) {
-  center(`<div class="title">GRAN PREMIO<br>${CONFIG.company}</div><div class="blink">PREMI START</div><div class="hint">CONTROLLER: START · TASTIERA: INVIO O SPAZIO · IN DUE? IL SECONDO SI UNISCE NELLA SCELTA DEL VEICOLO</div>${top.length ? table(top) : ''}`);
+  center(`<div class="scrim"></div><div class="logo"><div class="gp">Gran Premio</div><div class="brand">${CONFIG.company}</div></div>
+    <div class="press"><div class="button"></div>Premi START per giocare</div>
+    <div class="how"><span class="chip">Controller: START</span><span class="chip">Tastiera: Invio o Spazio</span><span class="chip">In due? Il secondo entra nella scelta del veicolo</span></div>
+    ${top.length ? table(top) : ''}`);
 }
 
 export function showSelect(ps, left) {
-  ps.forEach((p, i) => panel(i, `<div class="card"><div class="who g${i + 1}">GIOCATORE ${i + 1}</div><div class="choice">◀ ${VNAME[p.vehicle]} ▶</div><div>${dot(p.color)}${CNAME[p.color]}</div><div class="hint">${p.confirmed ? 'PRONTO!' : 'A = CONFERMA'}</div>${legend(p.dev)}</div>`));
-  center(`<div class="top">SCEGLI IL VEICOLO · ${left}</div>${ps.length < 2 ? '<div class="join blink">2° GIOCATORE? PREMI START</div>' : ''}`);
+  ps.forEach((p, i) => panel(i, `<div class="pass g${i + 1}"><header>Giocatore ${i + 1}</header><div class="body">
+    <div class="picker"><span class="arrow">◀</span><span class="name">${VNAME[p.vehicle]}</span><span class="arrow">▶</span></div>
+    <div class="swatches">${Object.keys(CONFIG.colors).map(c => `<i class="${c === p.color ? 'on' : ''}" style="background:${css(c)}"></i>`).join('')}</div>
+    <div class="status">${p.confirmed ? 'Pronto, si aspetta l\u2019altro giocatore' : `◀ ▶ cambia, ${CONFIRM[devKind(p.dev)]} conferma`}</div>
+    ${legend(p.dev)}</div>${p.confirmed ? '<div class="stamp">Pronto!</div>' : ''}</div>`));
+  center(`<div class="top-title">Scegli il veicolo <span class="timer">${left}</span></div>${ps.length < 2 ? '<div class="callout"><span>Giocatore 2? Premi START, Invio o Spazio</span></div>' : ''}`);
 }
 
 export function showPodium(rows) {
   center(`<div class="podium">${rows.map((r, i) =>
-    `<div class="row ${r.human ? 'me' : ''}"><b>${i + 1}°</b> ${r.name} ${dot(r.color)} <span>${r.time != null ? fmtTime(r.time) : ''}</span></div>`).join('')}<div class="cheer">GRANDE GARA!</div></div>`);
+    `<div class="row ${r.human ? 'me' : ''}"><span class="rank r${i + 1}">${i + 1}</span><span>${r.name}</span>${vdot(r)}<span class="time">${r.time != null ? fmtTime(r.time) : ''}</span></div>`).join('')}
+    <div class="cheer"><div class="banner"><span>Grande gara!</span></div></div></div>`);
 }
 
 export function showInitials(list, left) {
   list.forEach((it, i) => panel(i, it
-    ? `<div class="card"><div class="who">NUOVO RECORD!</div><div class="letters">${it.letters.map((n, j) => `<span class="${j === it.idx && !it.done ? 'cur' : ''}">${String.fromCharCode(65 + n)}</span>`).join('')}</div><div class="hint">${it.done ? 'FATTO!' : '▲▼ LETTERA · ▶ AVANTI'}</div></div>`
-    : '<div class="card"><div class="who">BRAVO!</div></div>'));
-  center(`<div class="top">SCRIVI LE TUE INIZIALI · ${left}</div>`);
+    ? `<div class="initials"><h4>Nuovo record! Scrivi le tue iniziali</h4><div class="flaps">${it.letters.map((n, j) => `<div class="flap ${j === it.idx && !it.done ? 'cur' : ''}">${String.fromCharCode(65 + n)}</div>`).join('')}</div>
+       <p>${it.done ? 'Fatto!' : '▲ ▼ cambia lettera, ▶ passa alla successiva'}</p></div>`
+    : '<div class="initials"><h4>Bella gara!</h4><p>Questa volta niente record: riprova!</p></div>'));
+  center(`<div class="top-title">Classifica <span class="timer">${left}</span></div>`);
 }
 
-export function showBoard(list, hl) {
-  center(`<div class="title small">CLASSIFICA</div>${list.length ? table(list, hl) : '<div>Nessun record</div>'}`);
-}
+export function showBoard(list, hl) { center('<div class="scrim"></div>' + table(list, hl)); }
+
+// schermate di servizio usate da main.js
+export const showIntro = (zone, ghost) => center(`<div class="top-title">Giro di ricognizione</div><div class="sign" style="font-size:1.6vh"><small>Reparto</small><b>${zone}</b></div>
+  ${ghost ? '<div class="callout" style="top:auto;bottom:12vh"><span>Sfida il fantasma del record di oggi!</span></div>' : ''}<div class="bottom"><span class="chip">A per saltare</span></div>`);
+export const showDisconnected = n => center(`<div class="alert"><b>Controller scollegato</b><span>Ricollega il controller del giocatore ${n}</span></div>`);
+export const showResume = n => center(`<div class="resume">${n}</div>`);
+export const showReplay = () => center('<div class="onair"><i></i>Replay</div><div class="bottom"><span class="chip">A per saltare</span></div>');
 
 export const showFps = (on) => { $('#fps').hidden = !on; };
 export const fps = (n) => { $('#fps').textContent = `${n} fps`; };

@@ -90,6 +90,11 @@ Un kart **non** ha posizione libera: ha `prog` (metri percorsi, cresce oltre `L`
 La posizione 3D si ricava con `track.sample(prog)` (punto + tangente + curvatura) e `track.height(prog)`.
 Conseguenze: niente scorciatoie, niente kart ribaltati, giri contati da `prog`, collisioni in coordinate `(prog, d)`. La pista curva "sotto" il kart (`h -= curvatura * ds`), da cui la sensazione di dover sterzare.
 
+### Interfaccia (HUD e schermate)
+
+Linguaggio visivo: **segnaletica di fabbrica fatta giocattolo**. Posizione = cartello rotondo blu d'obbligo (anello oro/argento/bronzo), giro = cartellino appeso, reparto = insegna con bordo di nastro di sicurezza, contromano = cartello di divieto d'accesso, partenza = **torre andon** (rosso → arancio → giallo → verde), selezione = **pass visitatore**, iniziali = tessere a palette, classifica = "tabellone di oggi", replay = grafica da regia TV.
+Font **Bahnschrift** (DIN, già presente su Windows → offline): `--font` normale, `--font-cond` per numeri e titoli. Colori in `:root` di `index.html` (`--blue`, `--red`, `--ink`, `--tape`, ...). Nelle viste di gara le misure sono in unità `cqh/cqw` (ogni `.view` è un container), così l'HUD scala da solo in split-screen. Markup in `src/ui.js`, che è l'unico file che scrive HTML.
+
 ### Rendering e prestazioni
 
 - Render interno **max 1080p** (o 720p dal menu), upscaling del browser; `pixelRatio = 1`.

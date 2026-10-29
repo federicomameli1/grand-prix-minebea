@@ -219,9 +219,9 @@ Target: **60 fps in split-screen a 1080p**, minimo accettabile 40 fps.
 - **Stack**: Vite + three.js (unica dipendenza runtime). JavaScript puro, nessun framework UI.
 - Build: `vite build` → `dist/` copiata su ogni portatile.
 - Server locale: `npx vite preview` o `python -m http.server` sulla cartella `dist/` (moduli ES e glTF non funzionano da `file://`).
-- **Launcher** `avvia.bat` nella cartella Esecuzione automatica di Windows:
+- **Launcher** `start.bat` nella cartella Esecuzione automatica di Windows:
   1. avvia il server locale
-  2. avvia Vivaldi (Chromium, stessi flag; cerca prima in %LOCALAPPDATA%, poi in Program Files):
+  2. avvia Vivaldi, altrimenti Chrome, altrimenti Edge (tutti Chromium, stessi flag):
      ```
      vivaldi --kiosk --autoplay-policy=no-user-gesture-required http://localhost:8080
      ```

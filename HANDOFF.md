@@ -24,7 +24,9 @@ npm run build        # crea dist/
 npm run preview      # serve dist/ su http://localhost:8080 (quello che usano le postazioni)
 ```
 
-Postazione all'evento: `npm run build` una volta, poi doppio clic su [avvia.bat](avvia.bat) (server + Vivaldi in kiosk con autoplay audio).
+Postazione all'evento: `npm run build` una volta, poi doppio clic su [start.bat](start.bat) (server + browser in kiosk con autoplay audio: Vivaldi, altrimenti Chrome, altrimenti Edge).
+
+Da **PowerShell** su PC aziendali `npm` può essere bloccato dalla policy degli script: usare `npm.cmd install` / `npm.cmd run build`, oppure il Prompt dei comandi.
 
 ### Comandi
 
@@ -78,7 +80,7 @@ src/ui.js           HUD, schermate, classifica, fantasma, impostazioni, menu ope
 public/audio/       music/*.ogg (CC0), voice/*.wav (generati)
 src/i18n.js         tutti i testi in it/en/hu (UI, cartelli della pista, nomi CPU)
 tools/voce/         genera.py: rigenera le frasi del telecronista (Kokoro per l'italiano, Piper per inglese e ungherese)
-avvia.bat           launcher postazione
+start.bat           launcher postazione
 ```
 
 ### Macchina a stati (`main.js`)
@@ -160,7 +162,7 @@ Aggiungendo una frase: aggiungerla a `FRASI` in `genera.py` **e** a `VOICE` in `
 
 ## 8. Postazioni all'evento
 
-- `avvia.bat` avvia `npm run preview` (porta 8080) e Vivaldi in `--kiosk --autoplay-policy=no-user-gesture-required`.
+- `start.bat` controlla che esista `dist/`, avvia `npm run preview` (porta 8080) e il browser (Vivaldi → Chrome → Edge) in `--kiosk --autoplay-policy=no-user-gesture-required`.
 - **Attualmente usa il profilo personale di Vivaldi** (scelta per i test a casa): chiudere Vivaldi prima di lanciarlo. **Per i PC aziendali** tornare a un profilo dedicato aggiungendo `--user-data-dir=C:\gpf-profile` e completare una volta la configurazione iniziale di Vivaldi in quel profilo (Vivaldi mostra la sua procedura di benvenuto anche con `--no-first-run`).
 - La classifica è in `localStorage` del profilo del browser: una per postazione. Azzerare la mattina dell'evento dal menu operatore.
 - Checklist portatile completa in SPEC.md §12 (sospensione, Windows Update, notifiche, uscita audio, ecc.).

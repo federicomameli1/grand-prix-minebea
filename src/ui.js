@@ -6,7 +6,7 @@ const SKEY = 'gpf_settings_v1', BKEY = 'gpf_leaderboard_v1';
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage pieno/bloccato: il gioco continua */ } };
 
-export const settings = { lang, laps: CONFIG.laps, music: 0.5, sfx: 0.8, maxRes: 1080, fps: false, voice: true, fancy: true, ...load(SKEY, {}) };
+export const settings = { laps: CONFIG.laps, music: 0.5, sfx: 0.8, maxRes: 1080, fps: false, voice: true, fancy: true, ...load(SKEY, {}), lang }; // lang già validata da i18n.js
 const saveSettings = () => save(SKEY, settings);
 
 export const board = {

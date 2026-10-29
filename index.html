@@ -219,17 +219,18 @@
 <div id="fps" hidden></div>
 <canvas id="minimap" width="400" height="520" hidden></canvas>
 <form id="op" hidden>
-  <b>Menu operatore</b>
-  <label>Giri (classifica solo con 3) <input name="laps" type="number" min="1" max="5"></label>
-  <label>Musica <input name="music" type="range" min="0" max="1" step="0.05"></label>
-  <label>Effetti <input name="sfx" type="range" min="0" max="1" step="0.05"></label>
-  <label>Risoluzione max <select name="maxRes"><option value="720">720p</option><option value="1080">1080p</option></select></label>
-  <label><input name="fps" type="checkbox"> Mostra FPS</label>
-  <label><input name="voice" type="checkbox"> Telecronista</label>
-  <label><input name="fancy" type="checkbox"> Fasci di luce (spegnere se scatta)</label>
-  <button type="button" name="toAttract">Torna al titolo</button>
-  <button type="button" name="resetBoard">Azzera classifica</button>
-  <button type="button" name="closeOp">Chiudi (Ctrl+Shift+O)</button>
+  <b data-t="opTitle"></b>
+  <label><span data-t="opLang"></span> <select name="lang"></select></label>
+  <label><span data-t="opLaps"></span> <input name="laps" type="number" min="1" max="5"></label>
+  <label><span data-t="opMusic"></span> <input name="music" type="range" min="0" max="1" step="0.05"></label>
+  <label><span data-t="opSfx"></span> <input name="sfx" type="range" min="0" max="1" step="0.05"></label>
+  <label><span data-t="opRes"></span> <select name="maxRes"><option value="720">720p</option><option value="1080">1080p</option></select></label>
+  <label><input name="fps" type="checkbox"> <span data-t="opFps"></span></label>
+  <label><input name="voice" type="checkbox"> <span data-t="opVoice"></span></label>
+  <label><input name="fancy" type="checkbox"> <span data-t="opFancy"></span></label>
+  <button type="button" name="toAttract" data-t="opAttract"></button>
+  <button type="button" name="resetBoard" data-t="opReset"></button>
+  <button type="button" name="closeOp" data-t="opClose"></button>
 </form>
 <script type="module" src="/src/main.js"></script>
 </body>

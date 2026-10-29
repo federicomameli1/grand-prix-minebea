@@ -6,6 +6,10 @@ Musica (CC0, nessuna attribuzione richiesta - citata per cortesia)
 
 Voce del telecronista
 - Generata in locale con Kokoro-82M (hexgrad, licenza Apache 2.0), voce if_sara - https://huggingface.co/hexgrad/Kokoro-82M
+- Inglese e ungherese generati in locale con Piper (OHF-Voice, licenza GPL-3.0 per il programma):
+  voce en_US-amy-medium (dataset Mycroft mimic3) e hu_HU-anna-medium (dataset CC0) - https://huggingface.co/rhasspy/piper-voices
+  Entrambe le voci sono addestrate a partire dalla voce inglese "lessac" (dataset Blizzard 2013, solo uso non commerciale):
+  ok per un evento interno gratuito, da rivedere per usi commerciali.
   Script: tools/voce/genera.py
 
 Tutto il resto (modelli 3D, pista, effetti sonori) e' generato dal codice del progetto.

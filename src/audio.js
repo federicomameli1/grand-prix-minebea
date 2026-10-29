@@ -1,4 +1,6 @@
 // Effetti sonori sintetizzati con Web Audio; musica e voce da file (vedi sotto).
+import { lang } from './i18n.js';
+
 let ctx, master, music, sfx, noiseBuf;
 
 export function init() {
@@ -97,7 +99,7 @@ async function loadAll() {
   };
   await Promise.all([
     ...['menu', 'race', 'race_final'].map(n => load(n, `music/${n}.ogg`)),
-    ...VOICE.map(k => load('v_' + k, `voice/${k}.wav`)),
+    ...VOICE.map(k => load('v_' + k, `voice/${lang}/${k}.wav`)),
   ]);
   if (wanted) setMusic(wanted);
 }

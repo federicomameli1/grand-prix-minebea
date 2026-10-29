@@ -38,7 +38,6 @@ export const CONFIG = {
     tugger: { name: 'TUGGER', vMax: 1.05, steer: 0.9, accel: 0.95 },
   },
   colors: { bianco: 0xf2f2f2, blu: 0x1f4fbf, rosso: 0xd32a2a },
-  cpuNames: ['CAPOTURNO', 'MAGAZZINIERE', 'MANUTENTORE', 'COLLAUDATORE', 'CARRELLISTA', 'SALDATORE'],
 };
 
 export const CHOICES = Object.keys(CONFIG.vehicles).flatMap(vehicle =>

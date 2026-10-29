@@ -6,6 +6,7 @@ import { aiInput } from './ai.js';
 import { pollDevices, isConnected, rumble } from './input.js';
 import * as audio from './audio.js';
 import * as ui from './ui.js';
+import { t as tr } from './i18n.js';
 import { Particles, Skids, CONFETTI, DRIFT_COLORS } from './effects.js';
 
 // --- renderer: una scena, fino a due camere (split-screen verticale)
@@ -110,7 +111,7 @@ function kartFx(k) {
 function enterAttract() {
   stopEngines(); clearKarts(); clearShowcase();
   players = []; pause = null; shot = 0; lastShot = -1;
-  const names = shuffle(CONFIG.cpuNames);
+  const names = shuffle(tr('cpuNames'));
   karts = shuffle(CHOICES).slice(0, 4).map((c, i) => {
     const k = new Kart(scene, track, { ...c, name: names[i] });
     k.place(i * track.L / 4, i % 2 ? 2 : -2);
@@ -185,7 +186,7 @@ function startRace(skipIntro = false) {
   clearShowcase(); clearKarts();
   laps = ui.settings.laps;
   const free = shuffle(CHOICES.map((_, i) => i).filter(i => !players.some(p => p.choice === i)));
-  const names = shuffle(CONFIG.cpuNames);
+  const names = shuffle(tr('cpuNames'));
   const skills = shuffle(CONFIG.cpuSkill);
   const cpus = free.slice(0, 4 - players.length).map((c, i) => Object.assign(new Kart(scene, track, { ...CHOICES[c], name: names[i] }), { skill: skills[i % skills.length] }));
   players.forEach((p, i) => Object.assign(p, {
@@ -239,7 +240,7 @@ function updateCountdown() {
   const n = 3 - Math.floor(modeT);
   if (n !== lastCount && n > 0) { lastCount = n; audio.play('count'); }
   if (modeT >= 3) {
-    audio.play('go'); audio.play('pop'); setMode('race'); voice('Via!', true);
+    audio.play('go'); audio.play('pop'); setMode('race'); voice('via', true);
     players.forEach(p => rumble(p.dev, 0.5, 0.5, 250));
     for (const d of [-6, 6]) { const q = track.point(0, d); fx.burst(q.x, 6.5, q.z, 80, CONFETTI, 8, 0.35, 2, 6); }
   }
@@ -292,7 +293,7 @@ function updateRace(dt, devs) {
     const lap = Math.min(laps, Math.floor(Math.max(0, k.prog) / track.L) + 1);
     if (lap > p.lap) {
       p.lap = lap; audio.play('lap');
-      p.banner = lap === laps ? 'Ultimo giro!' : `Giro ${lap}`; p.bannerT = 2;
+      p.banner = lap === laps ? tr('lastLap') : tr('lapN', lap); p.bannerT = 2;
       voice(lap === laps ? 'ultimo' : `giro${lap}`, true);
       if (lap === laps && laps > 1) audio.setMusic('race_final');
       fx.burst(k.pos.x, 3, k.pos.z, 60, CONFETTI, 7, 0.3, 1.8, 7);
@@ -355,7 +356,7 @@ function hudRace(dt) {
       lap: [p.lap, laps],
       zone: p.zoneT > 0 && mode === 'race' ? z : '',
       wrong: k.wrongT > 2,
-      msg: k.finished ? 'Arrivato!' : (p.bannerT > 0 ? p.banner : ''),
+      msg: k.finished ? tr('finished') : (p.bannerT > 0 ? p.banner : ''),
       boost: k.boostT > 0,
       charge: k.drifting ? { frac: Math.min(1, k.charge / CONFIG.driftLvl.at(-1)), lvl: k.driftLevel() } : null,
     });
@@ -428,7 +429,7 @@ function enterPodium() {
   audio.play('applause');
   setMode('podium');
   ui.setViews(1);
-  ui.showPodium(ranking.map(k => ({ name: k.human ? `Giocatore ${k.name.slice(1)}` : k.name, human: k.human, color: k.color, vehicle: k.vehicle, time: k.finished ? k.finishTime : null })));
+  ui.showPodium(ranking.map(k => ({ name: k.human ? tr('player', k.name.slice(1)) : k.name, human: k.human, color: k.color, vehicle: k.vehicle, time: k.finished ? k.finishTime : null })));
 }
 
 function toInitials() {
@@ -484,11 +485,11 @@ const mapBg = (() => {
   const c = document.createElement('canvas'); c.width = mapEl.width; c.height = mapEl.height;
   const g = c.getContext('2d');
   const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
-  for (const a of track.areas) { // reparti: forme morbide e iniziale del nome
+  for (const a of track.areas) { // reparti: forme morbide e iniziali del nome
     const [ax, az] = map(a.x0, a.z0), w = (a.x1 - a.x0) * sc, h = (a.z1 - a.z0) * sc;
     rr(ax, az, w, h, 14); g.fillStyle = a.color + '55'; g.fill();
     g.fillStyle = 'rgba(255,255,255,.75)'; g.font = '700 34px Bahnschrift, Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(a.name[0], ax + w / 2, az + h / 2);
+    g.fillText(a.name.slice(0, 2), ax + w / 2, az + h / 2, w - 8); // 2 lettere: in ungherese due reparti iniziano con F
   }
   const path = () => { g.beginPath(); pts.forEach((p, i) => g[i ? 'lineTo' : 'moveTo'](...map(p.x, p.z))); g.closePath(); };
   g.lineJoin = g.lineCap = 'round';

@@ -39,7 +39,7 @@ Postazione all'evento: `npm run build` una volta, poi doppio clic su [avvia.bat]
 
 La legenda dei comandi compare nella selezione veicolo (per il dispositivo di ciascun giocatore) e nel menu di pausa. Il menu di pausa lo comanda chi l'ha aperto (▲▼ + A, B/pausa per riprendere); alla ripresa c'è un conto alla rovescia di 3 s.
 
-**Menu operatore**: `Ctrl+Shift+O` (giri, volumi, risoluzione max, FPS, telecronista, fasci di luce, azzera classifica, torna al titolo).
+**Menu operatore**: `Ctrl+Shift+O` (**lingua: italiano / English / magyar**, giri, volumi, risoluzione max, FPS, telecronista, fasci di luce, azzera classifica, torna al titolo).
 
 ## 3. Stato attuale (cosa funziona)
 
@@ -51,7 +51,8 @@ Verificato nel browser durante lo sviluppo (screenshot + controlli numerici), sa
 - CPU imperfette (errori di traiettoria, velocità diverse), rubber banding, aiuto per l'umano dietro l'altro umano.
 - Effetti: particelle (turbo, drift, scintille, polvere, coriandoli, fuochi), segni di frenata, fiamma turbo con shader, linee di velocità, scossa camera, arrivo al rallentatore con camera orbitante.
 - Capannone: **tetto a shed** con vetrate, capriate, lampade industriali con pozze di luce, fasci di luce, robot di saldatura con scintille, carroponte, **~110 persone animate** (tribuna alla partenza, operatori ai macchinari, pedoni).
-- Audio: **musica CC0** (menu / gara / ultimo giro con dissolvenza), effetti sintetizzati, **telecronista** con 30 frasi generate in locale (Kokoro, voce femminile `if_sara`), vibrazione gamepad.
+- Audio: **musica CC0** (menu / gara / ultimo giro con dissolvenza), effetti sintetizzati, **telecronista** con 30 frasi generate in locale (Kokoro, voce femminile `if_sara`; inglese e ungherese con Piper), vibrazione gamepad.
+- **Lingue**: italiano, inglese, ungherese. Tutti i testi in `src/i18n.js`, compresi cartelli 3D della pista, nomi delle CPU e veicoli; cambiando lingua la pagina si ricarica per ridisegnare i cartelli.
 - Fantasma del record di oggi (1 giocatore), minimappa (1 giocatore), classifica top 10 per postazione in `localStorage`.
 
 **Mai verificato su hardware reale** (vedi §9): prestazioni sui portatili aziendali con grafica integrata, gamepad fisico (mapping, vibrazione, pausa su scollegamento), ascolto di voce/musica/mix.
@@ -75,7 +76,8 @@ src/input.js        gamepad + 2 tastiere virtuali, fronti di pressione, vibrazio
 src/audio.js        effetti sintetizzati (Web Audio), musica da file, voce da file
 src/ui.js           HUD, schermate, classifica, fantasma, impostazioni, menu operatore
 public/audio/       music/*.ogg (CC0), voice/*.wav (generati)
-tools/voce/         genera.py: rigenera le frasi del telecronista con Kokoro
+src/i18n.js         tutti i testi in it/en/hu (UI, cartelli della pista, nomi CPU)
+tools/voce/         genera.py: rigenera le frasi del telecronista (Kokoro per l'italiano, Piper per inglese e ungherese)
 avvia.bat           launcher postazione
 ```
 
@@ -144,7 +146,7 @@ Larghezza strada 9 m: tratti di pista paralleli devono distare almeno ~15 m (cen
 
 - **Effetti**: sintetizzati in `audio.js` (`play(name)`), nessun file.
 - **Musica**: `public/audio/music/` — *Pure Raceway* (gara), *Pure Raceway climax* (ultimo giro), *Sunny City* (menu), tutti **CC0** di MintoDog/OpenGameArt. `audio.setMusic(name)` fa la dissolvenza.
-- **Telecronista**: 30 WAV in `public/audio/voice/<chiave>.wav`, chiavi elencate in `audio.js` (`VOICE`) e in `genera.py` (`FRASI`). `audio.say(chiave, importante)`; le frasi non importanti vengono scartate se sta già parlando.
+- **Telecronista**: 30 WAV per lingua in `public/audio/voice/<lingua>/<chiave>.wav`, chiavi elencate in `audio.js` (`VOICE`) e in `genera.py` (`FRASI`). `audio.say(chiave, importante)`; le frasi non importanti vengono scartate se sta già parlando.
 - Rigenerare le voci (serve Python; il venv non è nel repo):
 
 ```bash

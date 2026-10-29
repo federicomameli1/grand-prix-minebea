@@ -5,6 +5,7 @@ import { CONFIG, wrapAngle } from './config.js';
 import data from './track.json';
 import { Crowd } from './people.js';
 import { agvModel } from './models.js';
+import { t as tr } from './i18n.js';
 
 const N = 2048; // campioni della spline
 const C = {
@@ -195,10 +196,10 @@ export function buildTrack(scene) {
     for (let i = 0; i < N; i++) { const dd = (X[i] - x) ** 2 + (Z[i] - z) ** 2; if (dd < bd) { bd = dd; best = i; } }
     return best * step;
   };
-  const zones = data.zones.map(z => ({ ...z, s: z.at ? nearestS(z.at) : z.from * L })).sort((a, b) => a.s - b.s);
+  const zones = data.zones.map(z => ({ ...z, name: tr(z.kind), s: z.at ? nearestS(z.at) : z.from * L })).sort((a, b) => a.s - b.s);
   const zoneAt = (s) => { const w = wrap(s); let z = zones[zones.length - 1]; for (const q of zones) if (q.s <= w) z = q; return z; };
   const pads = data.pads.map(q => ({ s: q.at ? nearestS(q.at) : q.t * L, d: q.d }));
-  const areas = (data.areas ?? []).map(a => { const [x0, z0] = m2(a.rect.slice(0, 2)), [x1, z1] = m2(a.rect.slice(2)); return { ...a, x0, z0, x1, z1 }; });
+  const areas = (data.areas ?? []).map(a => { const [x0, z0] = m2(a.rect.slice(0, 2)), [x1, z1] = m2(a.rect.slice(2)); return { ...a, name: tr(a.kind), x0, z0, x1, z1 }; });
   const inArea = (x, z) => areas.find(a => x > a.x0 && x < a.x1 && z > a.z0 && z < a.z1);
   // ostacoli = cerchi nello spazio pista (s, d); gli AGV cambiano d nel tempo
   const obstacles = [];
@@ -404,7 +405,7 @@ export function buildTrack(scene) {
   }
 
   // --- striscioni sui muri (logo se presente in public/assets/logo.png)
-  const bannerTex = textTexture(`${CONFIG.company} · FAMILY DAY`, 1024, 256);
+  const bannerTex = textTexture(`${CONFIG.company} · ${tr('familyDay')}`, 1024, 256);
   const logo = new Image();
   logo.onload = () => {
     const c = bannerTex.image, g = c.getContext('2d'), h = c.height * 0.8, w = logo.width * h / logo.height;
@@ -431,7 +432,7 @@ export function buildTrack(scene) {
     scene.add(sign);
   };
   const gantryS = [0, ...zones.map(z => z.s + 12)];
-  gantry(0, 'PARTENZA · ARRIVO', {});
+  gantry(0, tr('startFinish'), {});
   for (const z of zones) gantry(z.s + 12, z.name, { bg: '#1f4fbf', fg: '#fff', stripe: '#d32a2a' });
 
   // --- arredo automatico lungo i bordi, in base al reparto

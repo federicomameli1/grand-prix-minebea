@@ -19,6 +19,11 @@ const shadowMat = (() => {
 })();
 
 const WAGON_GAP = 1.9;
+const shieldGeo = new THREE.SphereGeometry(1, 20, 12);
+const shieldMat = new THREE.MeshBasicMaterial({
+  color: 0x66ddff, transparent: true, opacity: 0.22,
+  blending: THREE.AdditiveBlending, depthWrite: false,
+});
 
 // Fiamma del turbo: cono con shader animato, additivo. Uno per kart, visibile solo in turbo.
 const flameGeo = new THREE.ConeGeometry(0.28, 1.3, 12, 1, true).rotateX(-Math.PI / 2).translate(0, 0.5, -1.65);
@@ -46,7 +51,9 @@ export class Kart {
     this.wagons = vehicle === 'tugger' ? [wagonModel(color), wagonModel(color)] : [];
     this.flame = new THREE.Mesh(flameGeo, flameMat);
     this.mesh.add(this.flame);
-    scene.add(this.mesh, this.shadow, ...this.wagons);
+    this.shield = new THREE.Mesh(shieldGeo, shieldMat);
+    this.shield.scale.set(1.45, 1.25, 1.65);
+    scene.add(this.mesh, this.shadow, this.shield, ...this.wagons);
     this.pos = new THREE.Vector3();
     this.yaw = 0;
     this.trail = [];
@@ -57,10 +64,25 @@ export class Kart {
 
   get s() { return this.track.wrap(this.prog); }
 
+  get static() { return this._static; }
+  set static(value) {
+    this._static = value;
+    if (value) this.clearShield();
+  }
+
+  get finished() { return this._finished; }
+  set finished(value) {
+    this._finished = value;
+    if (value) this.clearShield();
+  }
+
+  clearShield() { this.shieldT = 0; this.shield.visible = false; }
+
   place(prog, d) {
-    Object.assign(this, { prog, d, h: 0, v: 0, boostT: 0, padCD: 0, ghostT: 0, wrongT: 0, stuckT: 0, wall: false, finished: false, finishTime: 0, static: false,
+    Object.assign(this, { prog, d, h: 0, v: 0, boostT: 0, shieldT: 0, padCD: 0, ghostT: 0, wrongT: 0, stuckT: 0, wall: false, finished: false, finishTime: 0, static: false,
       drifting: false, driftDir: 0, driftT: 0, driftVis: 0, charge: 0, steerVis: 0, events: [], wallCD: 0,
       y: this.track.height(prog), vy: 0, air: false, airT: 0 });
+    this.shield.visible = false;
     this.fillTrail();
     this.sync();
   }
@@ -77,6 +99,7 @@ export class Kart {
   }
 
   _step(dt, { steer, brake, drift = false }, mult) {
+    this.shieldT = Math.max(0, this.shieldT - dt);
     const st = this.stats, k = this.track.sample(this.prog).k;
     const vTop = CONFIG.vMax * st.vMax * mult;
 
@@ -134,7 +157,8 @@ export class Kart {
       this.d = side * lim;
       if (side * Math.sin(this.h) >= 0 || Math.cos(this.h) < 0) this.h = -side * Math.min(0.6, Math.max(Math.abs(this.h) * CONFIG.wallBounce, CONFIG.wallEscape));
       if (!this.wall && this.wallCD <= 0) {
-        this.v *= CONFIG.wallSlow; this.hit(); this.events.push(side > 0 ? 'wallL' : 'wallR'); this.endDrift(false);
+        if (this.shieldT <= 0) { this.v *= CONFIG.wallSlow; this.endDrift(false); } // lo scudo toglie solo la penalità
+        this.hit(); this.events.push(side > 0 ? 'wallL' : 'wallR');
         this.wallCD = 0.5;
       }
       this.wall = true;
@@ -157,13 +181,14 @@ export class Kart {
 
   respawn() {
     this.endDrift(false);
-    Object.assign(this, { d: 0, h: 0, v: CONFIG.vMax * 0.5, ghostT: 1, wrongT: 0, stuckT: 0, y: this.track.height(this.prog), vy: 0, air: false });
+    Object.assign(this, { d: 0, h: 0, v: CONFIG.vMax * 0.5, boostT: 0, shieldT: 0, ghostT: 1, wrongT: 0, stuckT: 0, y: this.track.height(this.prog), vy: 0, air: false });
+    this.shield.visible = false;
     this.fillTrail();
   }
 
   boost() {
     if (this.padCD > 0) return false;
-    this.boostT = CONFIG.boostTime; this.padCD = 0.6;
+    this.boostT = Math.max(this.boostT, CONFIG.boostTime); this.padCD = 0.6;
     return true;
   }
 
@@ -173,7 +198,10 @@ export class Kart {
     if (this.static) return;
     const p = this.track.sample(this.prog);
     this.pos.set(p.x + p.tz * this.d, this.y, p.z - p.tx * this.d);
+    this.shield.position.copy(this.pos); this.shield.position.y += 0.9;
+    this.shield.visible = this.shieldT > 0 && this.ghostT <= 0;
     this.yaw = Math.atan2(p.tx, p.tz) + this.h;
+    this.shield.rotation.y = this.yaw;
     this.mesh.position.copy(this.pos);
     // solo estetica: in drift il muso punta dentro la curva, in sterzata il kart si inclina
     this.mesh.rotation.y = this.yaw + this.driftVis + (this.drifting ? 0 : this.steerVis * 0.12);
@@ -213,6 +241,7 @@ export class Kart {
 
   setStatic(x, y, z, yaw) {
     this.static = true;
+    this.shieldT = 0; this.shield.visible = false;
     this.mesh.position.set(x, y, z);
     this.mesh.rotation.set(0, yaw, 0);
     this.mesh.scale.setScalar(1);
@@ -223,7 +252,10 @@ export class Kart {
     this.wagons.forEach(w => (w.visible = false));
   }
 
-  dispose() { this.scene.remove(this.mesh, this.shadow, ...this.wagons); }
+  dispose() {
+    this.shieldT = 0; this.shield.visible = false;
+    this.scene.remove(this.mesh, this.shadow, this.shield, ...this.wagons);
+  }
 }
 
 // Ostacoli (bancali, coni, AGV): il kart viene spinto fuori e rallenta, con scintille.
@@ -237,7 +269,10 @@ export function hitObstacles(karts, track) {
       if (dist >= R) continue;
       k.prog += (ds / dist) * (R - dist);
       k.d += (dd / dist) * (R - dist);
-      if (k.bumpCD <= 0) { k.v *= o.type === 'cone' ? 0.85 : 0.65; k.events.push('obst'); k.endDrift(false); }
+      if (k.bumpCD <= 0) {
+        if (k.shieldT <= 0) { k.v *= o.type === 'cone' ? 0.85 : 0.65; k.endDrift(false); }
+        k.events.push('obst');
+      }
       k.hit();
     }
   }
@@ -254,7 +289,8 @@ export function collide(karts, track) {
     const push = (r2 - dist) / 2, nx = ds / dist, ny = dd / dist;
     a.prog += nx * push; b.prog -= nx * push;
     a.d += ny * push; b.d -= ny * push;
-    (ds > 0 ? b : a).v *= 0.97; // chi tampona perde un filo di velocità
+    const rear = ds > 0 ? b : a;
+    if (rear.shieldT <= 0) rear.v *= 0.97; // chi tampona perde un filo di velocità (non con lo scudo)
     a.hit(); b.hit();
   }
 }

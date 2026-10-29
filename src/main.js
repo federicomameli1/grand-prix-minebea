@@ -3,11 +3,14 @@ import { CONFIG, CHOICES, clamp, wrapAngle } from './config.js';
 import { buildTrack } from './track.js';
 import { Kart, buildModel, collide, hitObstacles, flameMat } from './kart.js';
 import { aiInput } from './ai.js';
-import { pollDevices, isConnected, rumble } from './input.js';
+import { pollDevices, isConnected, rumble, setTextEntry } from './input.js';
 import * as audio from './audio.js';
 import * as ui from './ui.js';
 import { t as tr } from './i18n.js';
 import { Particles, Skids, CONFETTI, DRIFT_COLORS } from './effects.js';
+import { ItemBoxes } from './items.js';
+import { Nameplates } from './nameplates.js';
+import { NAME_KEYS, NAME_COLUMNS, sanitizeName, finishName } from './names.js';
 
 // --- renderer: una scena, fino a due camere (split-screen verticale)
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -21,10 +24,12 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.4);
 sun.position.set(30, 100, 50);
 scene.add(sun);
 const track = buildTrack(scene);
+const items = new ItemBoxes(scene, track);
+const nameplates = new Nameplates(scene);
 const cams = [0, 1].map(() => new THREE.PerspectiveCamera(70, 1, 0.1, 400));
 const fx = new Particles(scene);
 const skids = new Skids(scene);
-if (import.meta.env.DEV) window.__dbg = { THREE, scene, renderer, track, get karts() { return karts; } }; // ispezione da console in sviluppo
+if (import.meta.env.DEV) window.__dbg = { THREE, scene, renderer, track, items, nameplates, get mode() { return mode; }, get players() { return players; }, get karts() { return karts; } }; // ispezione da console in sviluppo
 
 function resize() { // render interno al massimo a 1080p (o 720p), il browser scala a schermo intero
   const cap = ui.settings.maxRes;
@@ -35,6 +40,7 @@ addEventListener('resize', resize);
 
 const size = new THREE.Vector2();
 function render(list) {
+  nameplates.update(['countdown', 'race', 'replay', 'podium'].includes(mode));
   renderer.getSize(size);
   const w = size.x / list.length;
   renderer.setScissorTest(list.length > 1);
@@ -58,12 +64,13 @@ const pick = (...keys) => keys[Math.floor(Math.random() * keys.length)];
 let replay = null; // { frames, t, tEnd, focus, spot }
 const ghostMat = new THREE.MeshBasicMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.35, depthWrite: false });
 
-const setMode = (m) => { mode = m; modeT = 0; };
+const setMode = (m) => { mode = m; modeT = 0; setTextEntry(m === 'names'); items.setVisible(['attract', 'intro', 'countdown', 'race', 'replay'].includes(m)); };
 const shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
 const raceOrder = () => karts.slice().sort((a, b) =>
   (b.finished - a.finished) || (a.finished ? a.finishTime - b.finishTime : b.prog - a.prog));
 
 function clearKarts() {
+  nameplates.clear();
   karts.forEach(k => k.dispose()); karts = [];
   if (ghostMesh) scene.remove(ghostMesh);
   ghostMesh = ghostRun = null;
@@ -111,6 +118,7 @@ function kartFx(k) {
 function enterAttract() {
   stopEngines(); clearKarts(); clearShowcase();
   players = []; pause = null; shot = 0; lastShot = -1;
+  items.reset();
   const names = shuffle(tr('cpuNames'));
   karts = shuffle(CHOICES).slice(0, 4).map((c, i) => {
     const k = new Kart(scene, track, { ...c, name: names[i] });
@@ -138,6 +146,13 @@ function enterSelect(dev) {
   voice('benvenuti', true);
   setMode('select');
   ui.setViews(1);
+  buildShowcase();
+}
+
+function backToSelect() { // dai nomi alla scelta del veicolo, senza perdere il giocatore 2
+  players.forEach(p => (p.confirmed = false));
+  setMode('select');
+  ui.setViews(players.length);
   buildShowcase();
 }
 
@@ -177,8 +192,56 @@ function updateSelect(dt, devs) {
   }
   spin += dt * 0.9;
   showcase.forEach(g => (g.rotation.y = spin));
-  if (players.every(p => p.confirmed)) return startRace();
+  if (players.every(p => p.confirmed)) return enterNames();
   ui.showSelect(players.map(p => ({ ...CHOICES[p.choice], confirmed: p.confirmed, dev: p.dev })));
+}
+
+// --- NOMI: un giocatore alla volta, tastiera diretta o tastiera a schermo col pad.
+let namePlayer = 0, nameCursor = 0;
+function enterNames() {
+  namePlayer = 0; nameCursor = 0;
+  players.forEach(p => (p.name = ''));
+  setMode('names'); ui.setViews(1); showNameEntry();
+}
+function showNameEntry() { ui.showNames(namePlayer + 1, players.length, players[namePlayer].name, nameCursor); }
+function confirmName() {
+  const p = players[namePlayer];
+  p.name = ui.cleanName(finishName(p.name, tr('player', namePlayer + 1)));
+  audio.play('ok');
+  if (++namePlayer === players.length) return startRace();
+  nameCursor = 0; showNameEntry();
+}
+function nameAction(key) {
+  const p = players[namePlayer];
+  if (key === 'done') return confirmName();
+  p.name = key === 'delete' ? [...p.name].slice(0, -1).join('') : sanitizeName(p.name + key);
+  audio.play('tick'); showNameEntry();
+}
+addEventListener('keydown', e => {
+  if (mode !== 'names' || !document.getElementById('op').hidden || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+  e.preventDefault();
+  if (e.key === 'Enter' && !e.repeat) return confirmName();
+  if (e.key === 'Backspace') return nameAction('delete');
+  if (e.key === 'Escape' && !e.repeat) return backToSelect();
+  if ([...e.key].length === 1) nameAction(e.key);
+});
+function updateNames(dt, devs) {
+  const p = players[namePlayer];
+  if (!isConnected(p.dev)) {
+    const fresh = devs.find(d => d.id.startsWith('gp') && (d.aP || d.startP) && !players.some(q => q !== p && q.dev === d.id));
+    if (fresh) { p.dev = fresh.id; return; }
+  }
+  const d = devs.find(d => d.id === p.dev && d.id.startsWith('gp'));
+  if (d) {
+    const row = Math.floor(nameCursor / NAME_COLUMNS), col = nameCursor % NAME_COLUMNS;
+    if (d.leftP || d.rightP) nameCursor = row * NAME_COLUMNS + (col + (d.rightP ? 1 : NAME_COLUMNS - 1)) % NAME_COLUMNS;
+    const rows = Math.ceil(NAME_KEYS.length / NAME_COLUMNS);
+    if (d.upP || d.downP) nameCursor = Math.min(NAME_KEYS.length - 1, ((row + (d.downP ? 1 : rows - 1)) % rows) * NAME_COLUMNS + col);
+    if (d.bP) nameAction('delete');
+    if (d.startP) return confirmName();
+    if (d.aP) return nameAction(NAME_KEYS[nameCursor]);
+  }
+  showNameEntry();
 }
 
 // --- GARA
@@ -190,11 +253,12 @@ function startRace(skipIntro = false) {
   const skills = shuffle(CONFIG.cpuSkill);
   const cpus = free.slice(0, 4 - players.length).map((c, i) => Object.assign(new Kart(scene, track, { ...CHOICES[c], name: names[i] }), { skill: skills[i % skills.length] }));
   players.forEach((p, i) => Object.assign(p, {
-    kart: new Kart(scene, track, { ...CHOICES[p.choice], name: `G${i + 1}`, human: true }),
-    engine: audio.engine(), zone: '', zoneT: 0, lap: 1, camInit: false, camYaw: 0, shake: 0, banner: '', bannerT: 0, initials: null,
+    kart: new Kart(scene, track, { ...CHOICES[p.choice], name: p.name || tr('player', i + 1), human: true }),
+    engine: audio.engine(), zone: '', zoneT: 0, lap: 1, camInit: false, camYaw: 0, shake: 0, banner: '', bannerT: 0,
   }));
   karts = [...cpus, ...players.map(p => p.kart)]; // CPU in prima fila, umani dietro
   [[-5, -2.2], [-5, 2.2], [-11, -2.2], [-11, 2.2]].forEach(([s, d], i) => karts[i].place(s, d));
+  items.reset(); nameplates.setKarts(karts);
   raceT = 0; endT = 0; finishCount = 0; lastCount = 0; pause = null;
   players.forEach(p => Object.assign(p, { rec: [], recNext: 0 }));
   ghostRun = players.length === 1 ? ui.ghost.load() : null;
@@ -272,7 +336,15 @@ function updateRace(dt, devs) {
     const rubber = clamp(1 + CONFIG.rubberK * (near.prog - k.prog) / CONFIG.rubberDist, CONFIG.rubberMin, CONFIG.rubberMax);
     k.step(dt, aiInput(k, track, raceT), rubber * k.skill);
   }
-  pads(); collide(karts, track); hitObstacles(karts, track);
+  pads();
+  for (const { kart, type } of items.update(dt, time, karts)) if (kart.human) {
+    const p = players.find(p => p.kart === kart);
+    p.banner = tr(type === 'turbo' ? 'itemTurbo' : 'itemShield'); p.bannerT = 2;
+    audio.play(type === 'turbo' ? 'boost' : 'charge');
+    rumble(p.dev, 0.3, 0.6, 220);
+    fx.burst(kart.pos.x, kart.pos.y + 1, kart.pos.z, 28, [0x65eaff, 0xffffff, 0xc5a0ff], 4, 0.25, 0.7, 2);
+  }
+  collide(karts, track); hitObstacles(karts, track);
 
   for (const k of karts) if (!k.finished && k.prog >= laps * track.L) {
     Object.assign(k, { finished: true, finishTime: raceT, rank: ++finishCount });
@@ -358,6 +430,7 @@ function hudRace(dt) {
       wrong: k.wrongT > 2,
       msg: k.finished ? tr('finished') : (p.bannerT > 0 ? p.banner : ''),
       boost: k.boostT > 0,
+      shield: k.shieldT > 0 ? Math.ceil(k.shieldT) : 0,
       charge: k.drifting ? { frac: Math.min(1, k.charge / CONFIG.driftLvl.at(-1)), lvl: k.driftLevel() } : null,
     });
     p.bannerT -= dt;
@@ -368,7 +441,7 @@ function hudRace(dt) {
 function recordReplay() {
   const f = { t: raceT, k: karts.map(k => ({
     p: k.mesh.position.toArray(), r: [k.mesh.rotation.x, k.mesh.rotation.y, k.mesh.rotation.z], prog: k.prog,
-    b: k.boostT > 0, sy: k.shadow.position.y, w: k.wagons.map(w => [...w.position.toArray(), w.rotation.y]),
+    b: k.boostT > 0, sh: k.shieldT > 0, sy: k.shadow.position.y, w: k.wagons.map(w => [...w.position.toArray(), w.rotation.y]),
   })) };
   replay.frames.push(f);
   // ponytail: finché nessun umano è arrivato tengo solo gli ultimi 12 s; dopo tengo tutto fino al replay
@@ -398,6 +471,8 @@ function updateReplay(dt, devs) {
     k.mesh.position.set(l(a.p[0], b.p[0]), l(a.p[1], b.p[1]), l(a.p[2], b.p[2]));
     k.mesh.rotation.set(a.r[0], a.r[1] + wrapAngle(b.r[1] - a.r[1]) * u, a.r[2]);
     k.flame.visible = a.b;
+    k.shield.visible = a.sh;
+    k.shield.position.copy(k.mesh.position); k.shield.position.y += 0.9;
     k.shadow.position.set(k.mesh.position.x, a.sy, k.mesh.position.z);
     k.wagons.forEach((w, j) => { w.position.set(l(a.w[j][0], b.w[j][0]), l(a.w[j][1], b.w[j][1]), l(a.w[j][2], b.w[j][2])); w.rotation.y = a.w[j][3]; });
     k.replayProg = l(a.prog, b.prog);
@@ -417,7 +492,7 @@ function replayCam(cam) { // camera TV: la postazione a bordo pista appena davan
   return cam;
 }
 
-// --- PODIO → INIZIALI → CLASSIFICA
+// --- PODIO → CLASSIFICA (usa il nome scelto prima della gara)
 function enterPodium() {
   stopEngines();
   slowT = 0; fwT = 0;
@@ -429,38 +504,21 @@ function enterPodium() {
   audio.play('applause');
   setMode('podium');
   ui.setViews(1);
-  ui.showPodium(ranking.map(k => ({ name: k.human ? tr('player', k.name.slice(1)) : k.name, human: k.human, color: k.color, vehicle: k.vehicle, time: k.finished ? k.finishTime : null })));
+  ui.showPodium(ranking.map(k => ({ name: k.name, human: k.human, color: k.color, vehicle: k.vehicle, time: k.finished ? k.finishTime : null })));
 }
 
-function toInitials() {
+function saveResults() {
   const q = laps === CONFIG.laps ? players.filter(p => p.kart.finished && ui.board.qualifies(p.kart.finishTime)) : [];
   if (!q.length) return enterBoard([]);
-  q.forEach(p => (p.initials = { letters: [0, 0, 0], idx: 0, done: false }));
-  setMode('initials');
-  ui.setViews(players.length);
+  const added = q.map((p, i) => {
+    const k = p.kart, at = Date.now() + i;
+    ui.board.add({ name: k.name, time: k.finishTime, vehicle: k.vehicle, color: k.color, at });
+    return at;
+  });
+  voice('record', true);
+  enterBoard(added);
 }
 
-function updateInitials(dt, devs) {
-  for (const p of players) {
-    const it = p.initials, d = devs.find(x => x.id === p.dev);
-    if (!it || it.done || !d) continue;
-    if (d.upP) it.letters[it.idx] = (it.letters[it.idx] + 1) % 26;
-    if (d.downP) it.letters[it.idx] = (it.letters[it.idx] + 25) % 26;
-    if (d.rightP || d.aP) { if (++it.idx === 3) { it.done = true; audio.play('ok'); } else audio.play('tick'); }
-    if ((d.leftP || d.bP) && it.idx > 0) it.idx--;
-  }
-  const active = players.filter(p => p.initials);
-  if (active.every(p => p.initials.done) || modeT > CONFIG.initialsTimeout) {
-    const added = active.map((p, i) => {
-      const k = p.kart, at = Date.now() + i;
-      voice('record', true);
-      ui.board.add({ name: ui.cleanName(p.initials.letters.map(n => String.fromCharCode(65 + n)).join('')), time: k.finishTime, vehicle: k.vehicle, color: k.color, at });
-      return at;
-    });
-    return enterBoard(added);
-  }
-  ui.showInitials(players.map(p => p.initials), Math.ceil(CONFIG.initialsTimeout - modeT));
-}
 
 function enterBoard(hl) {
   setMode('board');
@@ -573,7 +631,8 @@ function fixedCam(cam, x, z, back, up, fov, lookY = 1, dx = 0) { // dx > 0 spost
 
 function draw(dt) {
   if (mode === 'attract') return render([cinematic(cams[0], dt)]);
-  if (mode === 'select') { // 1 giocatore: kart a sinistra e scheda a destra; in due: kart in alto e scheda sotto
+  if (mode === 'select' || mode === 'names') { // 1 giocatore: kart a sinistra e scheda a destra; in due: kart in alto e scheda sotto
+    if (mode === 'names') return render([fixedCam(cams[0], track.showcase[namePlayer].x, track.showcase[namePlayer].z, 9, 3, 50)]);
     const solo = players.length === 1;
     return render(players.map((_, i) => fixedCam(cams[i], track.showcase[i].x, track.showcase[i].z, solo ? 7 : 10, solo ? 2.4 : 2.6, solo ? 46 : 50, solo ? 0.5 : -1.3, solo ? 2.6 : 0)));
   }
@@ -590,10 +649,9 @@ function podiumRain() {
 
 const UPDATE = {
   intro: updateIntro,
-  attract: updateAttract, select: updateSelect, countdown: updateCountdown, race: updateRace,
+  attract: updateAttract, select: updateSelect, names: updateNames, countdown: updateCountdown, race: updateRace,
   replay: updateReplay,
-  podium: () => { podiumRain(); if (modeT > CONFIG.podiumTime) toInitials(); },
-  initials: (dt, devs) => { podiumRain(); updateInitials(dt, devs); },
+  podium: () => { podiumRain(); if (modeT > CONFIG.podiumTime) saveResults(); },
   board: updateBoard,
 };
 
@@ -606,6 +664,7 @@ function loop(now) {
   slowT -= dt; time += gdt;
   UPDATE[mode](gdt, pollDevices());
   track.update(gdt, time);
+  if (mode !== 'race' || pause) items.animate(time);
   for (const tip of track.welding(time)) { // scintille dei robot di saldatura
     for (let i = 0; i < 2; i++) fx.emit(tip.x, tip.y, tip.z, (Math.random() - 0.5) * 4, Math.random() * 3, (Math.random() - 0.5) * 4, Math.random() < 0.5 ? 0xfff3a0 : 0xffffff, 0.14, 0.35, 12);
   }

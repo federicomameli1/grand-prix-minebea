@@ -22,7 +22,7 @@ Sviluppatore: 1 persona, < 1 mese. Tutto ciò che non è in questo documento è 
 ## 2. Loop di gioco
 
 ```
-ATTRACT ──START──> SELEZIONE ──> COUNTDOWN ──> GARA ──> PODIO ──> [INIZIALI] ──> CLASSIFICA ──> ATTRACT
+ATTRACT → SELEZIONE → NOME → INTRO → COUNTDOWN → GARA → REPLAY → PODIO → CLASSIFICA → ATTRACT
    ^                                                                                              |
    └──────────────────────────── inattività 30 s su menu/classifica ──────────────────────────────┘
 ```
@@ -31,12 +31,12 @@ ATTRACT ──START──> SELEZIONE ──> COUNTDOWN ──> GARA ──> PODI
 2. **Selezione**: il primo pad che preme START diventa **G1 (metà sinistra)**. Si parte subito in **schermo intero, 1 giocatore**.
    - Per 2 giocatori: nella schermata di selezione un secondo pad che preme START entra come **G2 (metà destra)**. La gara parte quando tutti i giocatori entrati hanno confermato (con 1 solo giocatore: appena G1 conferma), o allo scadere del timeout.
    - Ogni giocatore sceglie: veicolo (muletto / tugger) e colore (bianco / blu / rosso). Due umani non possono avere stesso veicolo+colore.
-   - Nessun timeout nella selezione (deciso dopo il playtest): si parte quando tutti hanno confermato.
+   - Nessun timeout nella selezione (deciso dopo il playtest): quando tutti confermano si inseriscono i nomi, poi parte l'intro.
 3. **Countdown** 3-2-1-VIA con SFX. Nessun "turbo partenza" (troppo difficile per i piccoli).
 4. **Gara** 3 giri (configurabile dall'operatore, 1-5).
 5. **Fine gara**: finisce **quando tutti gli umani hanno tagliato il traguardo**. Le CPU non ancora arrivate vengono piazzate in base alla posizione corrente.
 6. **Podio**: kart sul podio 3D, posizioni 1°-4°. Tono sempre positivo ("Grande gara!") anche per il 4°.
-7. **Iniziali** (solo se il tempo totale entra in top 10): 3 lettere stile sala giochi.
+7. **Record** (solo se il tempo totale entra in top 10): salvato automaticamente col nome scelto prima della gara.
 8. **Classifica** per 8 s, poi ritorno all'attract.
 
 ## 3. Guida e fisica (arcade, scritta a mano)
@@ -58,7 +58,7 @@ Posizione/rotazione 3D derivate da `curve.getPointAt(s/L)` + normale × `d`. Fis
 - **Drift opzionale (stile Mario Kart)**: tenendo LB/RB/grilletti (tastiera: Shift) mentre si sterza, il kart entra in derapata: direzione fissa, la levetta stringe/allarga, scintille bianche → blu → arancioni. Al rilascio mini-turbo (0,55 s / 1 s). I bambini possono ignorarlo.
 - **Sterzo assistito**: `heading` tende a riallinearsi alla tangente quando la levetta è a riposo (`CONFIG.assist`, manopola di difficoltà).
 - **Muri**: impossibile uscire di pista. Al contatto il kart viene rimbalzato verso la pista (−15% velocità, scintille, scossa camera), invece di scivolare lungo il bordo (sensazione "saponetta" segnalata in playtest).
-- **Turbo a terra**: pad "nastro trasportatore" (strisce animate con frecce, texture scorrevole). Passandoci sopra: `speed = vMax × 1.5` per 1.2 s, poi decadimento. Unico power-up del gioco.
+- **Turbo a terra**: pad "nastro trasportatore" (strisce animate con frecce, texture scorrevole). Passandoci sopra: `speed = vMax × 1.5` per 1.2 s, poi decadimento. Si aggiunge ai bonus turbo/scudo delle scatole oggetto.
 - **Collisioni kart-kart**: cerchi in spazio `(s, d)`, raggio = motrice. Spinta di separazione leggera + scambio minimo di velocità. Nessuna sbandata, nessuna perdita di controllo.
 
 ### Veicoli (leggere differenze)
@@ -176,9 +176,9 @@ Posizioni in `track.json` come `{ "t": 0.27, "d": -2 }` (frazione del giro, offs
 
 - Per postazione, in `localStorage` (offline). Chiave versionata (`gpf_leaderboard_v1`).
 - **Top 10 per miglior tempo totale gara** (3 giri). Un record vale solo se la gara è stata col numero di giri standard (3); con giri diversi la classifica non viene aggiornata.
-- **Inserimento 3 lettere arcade**: su/giù cambia lettera, destra/A conferma, sinistra torna indietro. In 2 giocatori, entrambi inseriscono **in contemporanea** nella propria metà schermo.
-- **Timeout 15 s** → salvato con le lettere correnti (default "AAA").
-- Ogni voce: iniziali, tempo, veicolo, colore (mostrato come icona: aiuta i bambini che non ricordano le iniziali).
+- **Nome prima della gara**, dopo la scelta dei veicoli: max 12 caratteri, tastiera diretta o tastiera a schermo con pad. In due si inserisce un nome alla volta; vuoto = nome giocatore localizzato.
+- Nomi semitrasparenti senza sfondo sopra i soli kart umani, sempre rivolti alla camera. Stesso nome sul podio e salvataggio automatico dei record senza chiedere iniziali dopo la gara.
+- Ogni voce: nome, tempo, veicolo, colore. Le vecchie voci con iniziali restano compatibili.
 - Reset solo dal menu operatore.
 - Filtro parole: blacklist minima di combinazioni di 3 lettere inappropriate in italiano → sostituite con "???".
 - `localStorage` sopravvive al riavvio di Chrome **solo se non si usa un profilo temporaneo/incognito**: il launcher usa un `--user-data-dir` fisso.
@@ -245,7 +245,10 @@ src/track.js        spline, mesh strada, arredo, zone, turbo pad
 src/kart.js         fisica arcade, veicoli, vagoni tugger
 src/ai.js           CPU + rubber banding
 src/input.js        gamepad + tastiera, assegnazione giocatori
-src/ui.js           HUD, menu, podio, iniziali, classifica, menu operatore
+src/ui.js           HUD, menu, inserimento nome, podio, classifica, menu operatore
+src/items.js        scatole oggetto instanziate e raccolta automatica
+src/names.js        normalizzazione nomi e tasti della tastiera a schermo
+src/nameplates.js   nomi semitrasparenti sopra i soli kart umani
 src/audio.js        musica e SFX
 public/track.json   tracciato, arredo, zone, turbo pad
 public/assets/      glTF, texture, audio
@@ -279,7 +282,11 @@ Un solo `config` (veicoli, rubber banding, giri, timeout) in cima a `main.js`.
 
 ## 16. Fuori scope (esplicitamente)
 
-Power-up raccoglibili, proiettili, segni di frenata, più piste, multiplayer in rete, classifica condivisa tra postazioni, supporto mobile/touch, volanti, ombre dinamiche, salvataggi su server, localizzazione, messaggi HSE.
+Proiettili, segni di frenata, più piste, multiplayer in rete, classifica condivisa tra postazioni, supporto mobile/touch, volanti, ombre dinamiche, salvataggi su server, localizzazione, messaggi HSE.
+
+### Aggiornamento 2026-10-29
+
+Scatole oggetto ora incluse: turbo automatico (2,4 s) o scudo (5 s), per umani e CPU, rigenerazione a 7 s. Nessun tasto nuovo; scudo contro penalità dei muri e collisioni con kart/ostacoli. Posizionamento su tratti senza ostacoli e lontano da rampe. Pista allargata da 9 a 12 m, curve e monumento adeguati.
 
 ## 17. Decisioni ancora aperte
 

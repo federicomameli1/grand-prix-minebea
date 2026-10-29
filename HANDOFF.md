@@ -1,7 +1,7 @@
 # HANDOFF — Gran Premio Minebea
 
 Documento per riprendere il lavoro da un altro PC (o da un'altra persona / sessione AI) senza perdere contesto.
-Ultimo aggiornamento: 2026-10-28.
+Ultimo aggiornamento: 2026-10-29.
 
 ---
 
@@ -47,7 +47,7 @@ La legenda dei comandi compare nella selezione veicolo (per il dispositivo di ci
 
 Verificato nel browser durante lo sviluppo (screenshot + controlli numerici), salvo dove indicato:
 
-- Flusso completo: **attract** (CPU in giro, camera cinematografica) → **selezione** (1-2 giocatori, muletto/tugger × bianco/blu/rosso, pedana rotante) → **volo d'intro** sulla pista → **semaforo** → **gara** → **replay TV** → **podio** con coriandoli → **iniziali arcade** (se top 10) → **classifica** → attract.
+- Flusso completo: **attract** (CPU in giro, camera cinematografica) → **selezione** (1-2 giocatori, muletto/tugger × bianco/blu/rosso, pedana rotante) → **nome prima della gara** (tastiera o pad, max 12 caratteri) → **volo d'intro** sulla pista → **semaforo** → **gara** → **replay TV** → **podio** con coriandoli → **classifica** (record salvati col nome scelto prima della gara) → attract.
 - Pista dal **disegno della planimetria** (assemblaggio a sinistra, stampaggio in alto a destra, verniciatura in basso a destra), con chicane, curva a S, **soppalco a 5 m** con salita/discesa, **2 rampe da salto**, bancali e coni in pista, **2 incroci AGV**, turbo pad, **maniglia d'auto gigante** come arco/monumento.
 - Fisica arcade su spline (niente motore fisico): sterzo assistito, muri che rimbalzano, **drift con 3 livelli di mini-turbo**, collisioni morbide tra kart, **fisica verticale** (voli e atterraggi), auto-respawn + tasto Y.
 - CPU imperfette (errori di traiettoria, velocità diverse), rubber banding, aiuto per l'umano dietro l'altro umano.
@@ -56,6 +56,8 @@ Verificato nel browser durante lo sviluppo (screenshot + controlli numerici), sa
 - Audio: **musica CC0** (menu / gara / ultimo giro con dissolvenza), effetti sintetizzati, **telecronista** con 30 frasi generate in locale (Kokoro, voce femminile `if_sara`; inglese e ungherese con Piper), vibrazione gamepad.
 - **Lingue**: italiano, inglese, ungherese. Tutti i testi in `src/i18n.js`, compresi cartelli 3D della pista, nomi delle CPU e veicoli; cambiando lingua la pagina si ricarica per ridisegnare i cartelli.
 - Fantasma del record di oggi (1 giocatore), minimappa (1 giocatore), classifica top 10 per postazione in `localStorage`.
+- **Scatole oggetto** rotanti: raccolta automatica per umani e CPU, turbo da 2,4 s oppure scudo da 5 s, rigenerazione dopo 7 s. Scatole in InstancedMesh; logica in `items.js`, immunità in `kart.js`.
+- **Nomi semitrasparenti** senza sfondo sopra i soli kart umani, orientati alla camera anche in split-screen e replay (`nameplates.js`). Il nome vale anche per podio e classifica; nessuna richiesta di iniziali dopo la gara.
 
 **Mai verificato su hardware reale** (vedi §9): prestazioni sui portatili aziendali con grafica integrata, gamepad fisico (mapping, vibrazione, pausa su scollegamento), ascolto di voce/musica/mix.
 
@@ -85,7 +87,7 @@ start.bat           launcher postazione
 
 ### Macchina a stati (`main.js`)
 
-`attract → select → intro → countdown → race (→ pausa se un pad si scollega) → replay → podium → initials (solo se record) → board → attract`.
+`attract → select → names → intro → countdown → race (→ pausa se un pad si scollega) → replay → podium → board → attract`.
 Ogni stato ha `enterX()` + `updateX(dt, devs)` registrata in `UPDATE`; `draw(dt)` sceglie le camere per stato. `modeT` = secondi nello stato corrente, `raceT` = tempo di gara (tempo di gioco, rallentato durante lo slow-mo).
 
 ### Il kart vive nello spazio della pista (concetto chiave)
@@ -142,7 +144,7 @@ Coordinate in **pixel del disegno** (x a destra, y in basso), convertite in metr
 ```
 
 Suggerimento: per controllare la pista dall'alto in sviluppo, in console c'è `window.__dbg` (`THREE`, `scene`, `renderer`, `track`, `karts`) solo con `npm run dev`.
-Larghezza strada 9 m: tratti di pista paralleli devono distare almeno ~15 m (centro-centro), altrimenti i bordi si sovrappongono.
+Larghezza strada **12 m** (prima 9 m): mantenere almeno ~18 m centro-centro fra tratti paralleli. Due curve sono state aperte localmente per evitare ribbon ripiegate; basi della maniglia adeguate alla larghezza.
 
 ## 7. Audio
 
@@ -176,12 +178,12 @@ Aggiungendo una frase: aggiungerla a `FRASI` in `genera.py` **e** a `VOICE` in `
 5. **Ascoltare il mix audio**: volume musica vs voce vs effetti, eventualmente ridurre le frasi del telecronista se ripetitive.
 6. **Logo** Minebea in `public/assets/logo.png`.
 7. Profilo browser dedicato sui PC aziendali (§8).
-8. Facoltativi già discussi ma non fatti: modelli Blender di macchinari iconici, modalità notte, scatole oggetto (power-up), banking delle curve.
+8. Facoltativi già discussi ma non fatti: modelli Blender di macchinari iconici, modalità notte, banking delle curve. Scatole oggetto implementate (turbo/scudo automatici).
 
 ### Problemi noti / stranezze
 
 - Il fantasma è salvato con la chiave `gpf_ghost_v2` (il formato include la quota); cambiando il formato dei frame aumentare la versione.
-- Nessun test automatico vero: la verifica è fatta nel browser (screenshot + misure via `window.__dbg`). C'è un controllo di regressione da incollare nella console con `npm run dev`: [tools/checks/muri.js](tools/checks/muri.js) (kart incollati al muro esterno delle curve, corretto il 2026-10-28). Se si aggiunge logica delicata conviene aggiungere controlli simili.
+- Regressione automatica browser: `node tools/checks/features.mjs [percorso Chromium]` (Node 22+, Edge/Chrome/Chromium; profilo temporaneo isolato, nessuna nuova dipendenza). Controlla nomi, etichette, scatole, scudo, split-screen, podio/classifica e pad simulato. Non sostituisce il playtest su hardware reale. La verifica visiva usa screenshot + misure via `window.__dbg`. C'è un controllo di regressione da incollare nella console con `npm run dev`: [tools/checks/muri.js](tools/checks/muri.js) (kart incollati al muro esterno delle curve, corretto il 2026-10-28). Se si aggiunge logica delicata conviene aggiungere controlli simili.
 - `vite build` avvisa che il bundle supera 500 kB (è three.js): irrilevante in locale.
 - In sviluppo, se il kart umano non viene comandato, va lento e sbatte (ostacoli/AGV): è normale, non un bug.
 

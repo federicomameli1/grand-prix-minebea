@@ -11,6 +11,15 @@ npm run dev        # http://localhost:5173
 - Specifica e decisioni di design: [SPEC.md](SPEC.md)
 - Crediti: [CREDITS.txt](CREDITS.txt)
 
+## Novità di gioco
+
+- Pista larga **12 m**, con più spazio per sorpassi e drift.
+- Scatole oggetto: bonus automatico **turbo** o **scudo**, anche per le CPU.
+- Nome prima della gara (max 12 caratteri): scrittura da tastiera oppure tastiera a schermo con gamepad.
+- Nomi semitrasparenti senza sfondo sopra i soli kart umani; stesso nome su podio e classifica.
+
+Regressione browser: `node tools/checks/features.mjs [percorso Chromium]` (Node 22+; usa un profilo temporaneo isolato).
+
 ## English
 
 3D arcade racing game (three.js) for the Minebea Pianezza family day. Fully offline, 1-2 players plus CPU karts,

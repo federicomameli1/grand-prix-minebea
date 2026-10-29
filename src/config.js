@@ -2,7 +2,7 @@
 export const CONFIG = {
   company: 'MINEBEA',
   laps: 3,               // giri "ufficiali": la classifica si aggiorna solo con questo valore
-  roadWidth: 9,
+  roadWidth: 12,
   vMax: 15,             // m/s
   accel: 7,
   brake: 14,
@@ -31,7 +31,6 @@ export const CONFIG = {
   rubberMax: 1.15,
   catchUpMax: 0.08,     // bonus max per l'umano dietro all'altro umano
   podiumTime: 7,
-  initialsTimeout: 15,
   boardTime: 8,
   vehicles: {
     muletto: { name: 'MULETTO', vMax: 1.0, steer: 1.1, accel: 1.05 },

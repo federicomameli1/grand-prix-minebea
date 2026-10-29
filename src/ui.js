@@ -1,5 +1,6 @@
 import { CONFIG, clamp } from './config.js';
 import { t, lang, LANGS } from './i18n.js';
+import { NAME_KEYS, MAX_NAME_LENGTH, escapeHtml } from './names.js';
 
 const $ = s => document.querySelector(s);
 const SKEY = 'gpf_settings_v1', BKEY = 'gpf_leaderboard_v1';
@@ -25,7 +26,13 @@ export const ghost = {
 };
 
 const BAD = ['CAZ', 'CUL', 'FIG', 'MER', 'PUT', 'TRO', 'STR', 'VAF', 'FAN', 'PEN', 'SEX', 'DIO', 'ANO', 'NEG', 'GAY', 'FAG', 'ASS', 'WTF', 'FAS', 'FOS', 'KUR', 'GEC', 'BAZ', 'SEG', 'PIC'];
-export const cleanName = n => (BAD.includes(n) ? '???' : n);
+// Nomi liberi fino a 12 caratteri: oltre ai nomi interi da 3 lettere si cercano radici volgari dentro il nome
+// (maiuscole, senza accenti, spazi e cifre: "C A Z 1 Z O" → "CAZZO"). Niente frammenti da 3 lettere qui,
+// altrimenti cadrebbero nomi comuni come Claudio, Stefano, Massimo.
+const BAD_PARTS = ['CAZZ', 'CULO', 'MERD', 'PUTTAN', 'TROIA', 'STRONZ', 'VAFF', 'FANCUL', 'MINCHI', 'FIGA', 'PORCOD', 'DIOCAN', 'DIOPORC',
+  'BASTARD', 'FROCI', 'FUCK', 'SHIT', 'BITCH', 'PUSSY', 'NIGG', 'NEGR', 'KURV', 'FASZ', 'GECI', 'BAZD', 'SEGG', 'PICSA', 'HITLER', 'NAZI'];
+const plain = n => n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '');
+export const cleanName = (n) => { const p = plain(n); return BAD.includes(p) || BAD_PARTS.some(b => p.includes(b)) ? '???' : n; };
 
 const VNAME = { muletto: t('muletto'), tugger: t('tugger') };
 const css = c => '#' + CONFIG.colors[c].toString(16).padStart(6, '0');
@@ -41,14 +48,15 @@ export function setViews(n) {
   viewsEl.innerHTML = Array.from({ length: n }, (_, i) =>
     `<div class="view" style="left:${i * 100 / n}%;width:${100 / n}%"><div class="speed"></div><div class="pos"></div><div class="lap"></div><div class="zone"></div>`
     + `<div class="wrong" hidden><div class="noentry"></div><span>${t('turnAround')}</span></div><div class="msg"></div><div class="panel"></div>`
-    + '<div class="charge"><i><b></b></i><i><b></b></i><i><b></b></i></div></div>').join('');
+    + '<div class="charge"><i><b></b></i><i><b></b></i><i><b></b></i></div><div class="item-status"></div></div>').join('');
 }
 
 // HUD di gara: lap = [giro, giri], charge = { frac 0..1, lvl } durante il drift
-export function hud(i, { pos, lap, zone, wrong, msg, boost, charge }) {
+export function hud(i, { pos, lap, zone, wrong, msg, boost, charge, shield }) {
   const v = viewsEl.children[i];
   if (!v) return;
-  const [speedEl, posEl, lapEl, zoneEl, wrongEl, msgEl, , chargeEl] = v.children;
+  const [speedEl, posEl, lapEl, zoneEl, wrongEl, msgEl, , chargeEl, itemEl] = v.children;
+  html(itemEl, shield ? `◈ ${t('itemShield')} · ${shield}s` : '');
   speedEl.classList.toggle('on', !!boost);
   chargeEl.classList.toggle('on', !!charge);
   if (charge) [...chargeEl.children].forEach((seg, j) => { seg.firstChild.style.width = `${clamp(charge.frac * 3 - j, 0, 1) * 100}%`; });
@@ -62,7 +70,7 @@ export function hud(i, { pos, lap, zone, wrong, msg, boost, charge }) {
 const panel = (i, s) => html(viewsEl.children[i]?.querySelector('.panel'), s);
 
 const table = (list, hl = []) => `<div class="board"><h3>${t('boardTitle')}</h3>${list.length
-  ? `<ol>${list.map((e, i) => `<li class="${hl.includes(e.at) ? 'hl' : ''}"><span class="rank r${i + 1}">${i + 1}</span><span class="name">${e.name}</span>${vdot(e)}<span class="time">${fmtTime(e.time)}</span></li>`).join('')}</ol>`
+  ? `<ol>${list.map((e, i) => `<li class="${hl.includes(e.at) ? 'hl' : ''}"><span class="rank r${i + 1}">${i + 1}</span><span class="name">${escapeHtml(e.name)}</span>${vdot(e)}<span class="time">${fmtTime(e.time)}</span></li>`).join('')}</ol>`
   : `<div class="empty">${t('boardEmpty')}</div>`}</div>`;
 
 // partenza: torre andon (rosso, arancio, giallo... verde = via)
@@ -104,18 +112,19 @@ export function showSelect(ps) {
   center(`<div class="top-title">${t('pickVehicle')}</div>${ps.length < 2 ? `<div class="callout"><span>${t('p2join')}</span></div>` : ''}`);
 }
 
-export function showPodium(rows) {
-  center(`<div class="podium">${rows.map((r, i) =>
-    `<div class="row ${r.human ? 'me' : ''}"><span class="rank r${i + 1}">${i + 1}</span><span>${r.name}</span>${vdot(r)}<span class="time">${r.time != null ? fmtTime(r.time) : ''}</span></div>`).join('')}
-    <div class="cheer"><div class="banner"><span>${t('greatRace')}</span></div></div></div>`);
+export function showNames(player, count, name, cursor) {
+  const keyLabel = key => key === 'delete' ? '⌫' : key === 'done' ? t('nameConfirm') : key === ' ' ? '␣' : key;
+  center(`<div class="scrim"></div><div class="name-entry"><header>${t('player', player)} · ${player}/${count}</header>
+    <h2>${t('enterName')}</h2><div class="name-value">${escapeHtml(name) || '<span>…</span>'}<i></i></div>
+    <div class="name-limit">${[...name].length}/${MAX_NAME_LENGTH}</div>
+    <div class="name-grid">${NAME_KEYS.map((key, i) => `<span class="${i === cursor ? 'sel' : ''} ${key === 'done' ? 'confirm' : ''}">${keyLabel(key)}</span>`).join('')}</div>
+    <p>${t('nameHelp')}</p><small>${t('nameKeyboard')}</small></div>`);
 }
 
-export function showInitials(list, left) {
-  list.forEach((it, i) => panel(i, it
-    ? `<div class="initials"><h4>${t('newRecord')}</h4><div class="flaps">${it.letters.map((n, j) => `<div class="flap ${j === it.idx && !it.done ? 'cur' : ''}">${String.fromCharCode(65 + n)}</div>`).join('')}</div>
-       <p>${it.done ? t('done') : t('initialsHelp')}</p></div>`
-    : `<div class="initials"><h4>${t('niceRace')}</h4><p>${t('noRecord')}</p></div>`));
-  center(`<div class="top-title">${t('leaderboard')} <span class="timer">${left}</span></div>`);
+export function showPodium(rows) {
+  center(`<div class="podium">${rows.map((r, i) =>
+    `<div class="row ${r.human ? 'me' : ''}"><span class="rank r${i + 1}">${i + 1}</span><span>${escapeHtml(r.name)}</span>${vdot(r)}<span class="time">${r.time != null ? fmtTime(r.time) : ''}</span></div>`).join('')}
+    <div class="cheer"><div class="banner"><span>${t('greatRace')}</span></div></div></div>`);
 }
 
 export function showBoard(list, hl) { center('<div class="scrim"></div>' + table(list, hl)); }

@@ -481,11 +481,14 @@ export function buildTrack(scene) {
     // cartello alto al centro del reparto, girato verso la pista
     let bi = 0, bd = Infinity;
     for (let i = 0; i < N; i += 4) { const dd = (X[i] - cxA) ** 2 + (Z[i] - czA) ** 2; if (dd < bd) { bd = dd; bi = i; } }
-    const yaw = Math.atan2(X[bi] - cxA, Z[bi] - czA), sm = new THREE.Matrix4().makeRotationY(yaw).setPosition(cxA, 0, czA);
-    for (const x of [-3.5, 3.5]) box(0.3, 9, 0.3, x, 4.5, -0.3, C.dark, sm);
-    box(9.4, 2.6, 0.2, 0, 8, -0.25, C.dark, sm);
+    // centro sulla pista: portale rivolto a chi arriva, pali fuori dalla strada; altrimenti cartello girato verso la pista
+    const overRoad = bd < (hw + 3) ** 2, sx = overRoad ? X[bi] : cxA, sz = overRoad ? Z[bi] : czA;
+    const yaw = overRoad ? Math.atan2(TX[bi], TZ[bi]) + Math.PI : Math.atan2(X[bi] - cxA, Z[bi] - czA);
+    const sm = new THREE.Matrix4().makeRotationY(yaw).setPosition(sx, 0, sz), postX = overRoad ? hw + 1.5 : 3.5;
+    for (const x of [-postX, postX]) box(0.3, 9, 0.3, x, 4.5, -0.3, C.dark, sm);
+    box(Math.max(9.4, postX * 2 + 0.3), 2.6, 0.2, 0, 8, -0.25, C.dark, sm);
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(9, 2.3), new THREE.MeshBasicMaterial({ map: textTexture(a.name, 1024, 256, { bg: a.color, fg: '#fff', stripe: '#fff' }) }));
-    sign.position.set(cxA, 8, czA); sign.rotation.y = yaw;
+    sign.position.set(sx, 8, sz); sign.rotation.y = yaw;
     sign.position.add(new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)).multiplyScalar(-0.1));
     scene.add(sign);
   }
@@ -561,14 +564,15 @@ export function buildTrack(scene) {
     g.position.set(q.x, hb, q.z); g.rotation.y = yaw;
     const chrome = new THREE.MeshPhongMaterial({ color: 0xd5dbe2, specular: 0xffffff, shininess: 120 });
     const dark = new THREE.MeshPhongMaterial({ color: 0x2e333b, shininess: 60 });
-    const path = new THREE.CatmullRomCurve3([[-7.2, 0.6], [-7.2, 4.5], [-5.6, 7.6], [0, 8.4], [5.6, 7.6], [7.2, 4.5], [7.2, 0.6]].map(([x, y]) => new THREE.Vector3(x, y, 0)));
+    const halfSpan = hw + 2.7; // basi da 1.1 m per lato: 1.6 m liberi dal bordo strada
+    const path = new THREE.CatmullRomCurve3([[-halfSpan, 0.6], [-halfSpan, 4.5], [-halfSpan + 1.6, 7.6], [0, 8.4], [halfSpan - 1.6, 7.6], [halfSpan, 4.5], [halfSpan, 0.6]].map(([x, y]) => new THREE.Vector3(x, y, 0)));
     g.add(new THREE.Mesh(new THREE.TubeGeometry(path, 48, 0.55, 14).scale(1, 1, 2.2), chrome)); // impugnatura piatta
-    for (const x of [-7.2, 7.2]) {
+    for (const x of [-halfSpan, halfSpan]) {
       const base = new THREE.Mesh(new RoundedBoxGeometry(2.2, 1.2, 3.2, 3, 0.4), chrome);
       base.position.set(x, 0.6, 0); g.add(base);
     }
     const lock = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.3, 20).rotateX(Math.PI / 2), dark); // cilindretto serratura
-    lock.position.set(-7.2, 0.9, -1.7); g.add(lock);
+    lock.position.set(-halfSpan, 0.9, -1.7); g.add(lock);
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.8), new THREE.MeshBasicMaterial({ map: textTexture(`${CONFIG.company} · PIANEZZA`, 1024, 205, { bg: '#1f4fbf', fg: '#fff', stripe: '#d32a2a' }) }));
     sign.position.set(0, 9.9, -1.3); sign.rotation.y = Math.PI; g.add(sign);
     const sback = new THREE.Mesh(new THREE.BoxGeometry(9.2, 2, 0.15), dark);

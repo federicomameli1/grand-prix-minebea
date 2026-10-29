@@ -1,8 +1,11 @@
 import { clamp } from './config.js';
 
 // Dispositivi: gamepad (gp0, gp1…) + due "gamepad" da tastiera per sviluppo/operatore.
+let textEntry = false;
+export function setTextEntry(on) { textEntry = on; keys.clear(); tapped.clear(); }
 const keys = new Set(), tapped = new Set(); // tapped: premuti dall'ultimo poll, anche se già rilasciati
 addEventListener('keydown', (e) => {
+  if (textEntry) return;
   keys.add(e.code); tapped.add(e.code);
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Backspace', 'Tab'].includes(e.code)) e.preventDefault();
 });
